@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styles from './HealthCheckPage.module.css'
 
@@ -12,25 +12,23 @@ interface HealthStatus {
   }
 }
 
+function getHealthStatus(): HealthStatus {
+  const checks = {
+    jsEnabled: typeof window !== 'undefined',
+    reactRendering: true,
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    healthy: Object.values(checks).every((value) => value),
+    environment: import.meta.env.MODE,
+    checks,
+  }
+}
+
 export default function HealthCheckPage() {
   const { t } = useTranslation()
-  const [health, setHealth] = useState<HealthStatus | null>(null)
-
-  useEffect(() => {
-    const checks = {
-      jsEnabled: typeof window !== 'undefined',
-      reactRendering: true,
-    }
-
-    setHealth({
-      timestamp: new Date().toISOString(),
-      healthy: Object.values(checks).every((value) => value),
-      environment: import.meta.env.MODE,
-      checks,
-    })
-  }, [])
-
-  if (!health) return null
+  const [health] = useState<HealthStatus>(getHealthStatus)
 
   const checkLabels: Record<keyof HealthStatus['checks'], string> = {
     jsEnabled: t('health.checkJsEnabled'),

@@ -1,0 +1,82 @@
+{
+  "cityId": "FR-75001-Paris",
+  "editionId": "FR-75001-Paris-2026-06-15",
+  "date": "2026-06-15",
+  "streetCount": 16,
+  "totalMeters": 13661,
+  "totalDistance": 13.661,
+  "totalAttempts": 7,
+  "totalCompleted": 3,
+  "leaderboard": [
+    {
+      "playerId": "player-elena",
+      "playerName": "Elena Rossi",
+      "country": "ITA",
+      "cityId": "FR-75001-Paris",
+      "distance": 14.58,
+      "completed": true,
+      "rank": 1,
+      "time": 4369
+    },
+    {
+      "playerId": "player-hana",
+      "playerName": "Hana Visser",
+      "country": "NLD",
+      "cityId": "FR-75001-Paris",
+      "distance": 14.41,
+      "completed": true,
+      "rank": 2,
+      "time": 6672
+    },
+    {
+      "playerId": "player-gus",
+      "playerName": "Gus Johnson",
+      "country": "USA",
+      "cityId": "FR-75001-Paris",
+      "distance": 13.86,
+      "completed": true,
+      "rank": 3,
+      "time": 6240
+    },
+    {
+      "playerId": "player-bob",
+      "playerName": "Bob Dupont",
+      "country": "BEL",
+      "cityId": "FR-75001-Paris",
+      "distance": 11.99,
+      "completed": false,
+      "rank": 4,
+      "time": 4423
+    },
+    {
+      "playerId": "player-fatima",
+      "playerName": "Fatima Garcia",
+      "country": "ESP",
+      "cityId": "FR-75001-Paris",
+      "distance": 11.83,
+      "completed": false,
+      "rank": 5,
+      "time": 3939
+    },
+    {
+      "playerId": "player-dana",
+      "playerName": "Dana Müller",
+      "country": "DEU",
+      "cityId": "FR-75001-Paris",
+      "distance": 9.84,
+      "completed": false,
+      "rank": 6,
+      "time": 2844
+    },
+    {
+      "playerId": "player-charlie",
+      "playerName": "Charlie Smith",
+      "country": "GBR",
+      "cityId": "FR-75001-Paris",
+      "distance": 9.8,
+      "completed": false,
+      "rank": 7,
+      "time": 4160
+    }
+  ]
+}

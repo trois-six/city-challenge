@@ -1,0 +1,14 @@
+[
+  {
+    "id": "FR-69001-Lyon-2026-06-15",
+    "current": true,
+    "country": "FRA",
+    "region": "Auvergne-Rhône-Alpes",
+    "department": "69",
+    "postalCode": "69001",
+    "name": "Lyon",
+    "date": "2026-06-15",
+    "streetCount": 16,
+    "totalMeters": 13906
+  }
+]

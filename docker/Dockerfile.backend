@@ -1,0 +1,35 @@
+# Build stage
+FROM rust:1.96-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
+
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/.cargo ./.cargo
+COPY backend/src ./src
+
+# Build the application
+RUN cargo build --release
+
+# Production stage
+FROM alpine:latest
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates
+
+# Copy binary from builder
+COPY --from=builder /app/output/release/server ./server
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:8080/api/health || exit 1
+
+# Run the server
+CMD ["./server"]

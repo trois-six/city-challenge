@@ -1,0 +1,14 @@
+[
+  {
+    "id": "FR-75001-Paris-2026-06-15",
+    "current": true,
+    "country": "FRA",
+    "region": "Île-de-France",
+    "department": "75",
+    "postalCode": "75001",
+    "name": "Paris",
+    "date": "2026-06-15",
+    "streetCount": 16,
+    "totalMeters": 13661
+  }
+]

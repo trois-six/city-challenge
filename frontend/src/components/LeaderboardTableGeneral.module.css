@@ -1,0 +1,89 @@
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+thead {
+  background-color: #f5f5f5;
+}
+
+th {
+  padding: 1.25rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #ddd;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+th:hover {
+  background-color: #e8e8e8;
+}
+
+td {
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+tbody tr:nth-child(1),
+tbody tr:nth-child(2),
+tbody tr:nth-child(3) {
+  background-color: #fffaf0;
+}
+
+tbody tr:nth-child(1) .rank::before {
+  content: '🥇 ';
+}
+
+tbody tr:nth-child(2) .rank::before {
+  content: '🥈 ';
+}
+
+tbody tr:nth-child(3) .rank::before {
+  content: '🥉 ';
+}
+
+.rank {
+  font-weight: 600;
+  color: #0066cc;
+  width: 80px;
+}
+
+.player {
+  font-weight: 500;
+}
+
+.cities {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.distance {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 768px) {
+  th, td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .rank {
+    width: 60px;
+  }
+}

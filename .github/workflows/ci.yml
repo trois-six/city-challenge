@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - run: just frontend::lint
+      - run: just frontend::build
+      - run: just frontend::test
+      - run: just frontend::test-functional
+      - run: just frontend::test-integration
+      - run: just frontend::dead-code
+      - run: just frontend::deps-check
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just,cargo-machete,cargo-audit,cargo-outdated
+
+      - run: just backend::fmt-check
+      - run: just backend::lint
+      - run: just backend::build
+      - run: just backend::test
+      - run: just backend::test-functional
+      - run: just backend::test-integration
+      - run: just backend::dead-code
+      - run: just backend::deps-check

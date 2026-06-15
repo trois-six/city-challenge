@@ -1,0 +1,38 @@
+[
+  {
+    "id": "FR-75001-Paris",
+    "country": "FRA",
+    "region": "Île-de-France",
+    "department": "75",
+    "postalCode": "75001",
+    "name": "Paris",
+    "date": "2026-06-15",
+    "streetCount": 16,
+    "totalMeters": 13661,
+    "dir": "FR/75/75001/Paris"
+  },
+  {
+    "id": "FR-69001-Lyon",
+    "country": "FRA",
+    "region": "Auvergne-Rhône-Alpes",
+    "department": "69",
+    "postalCode": "69001",
+    "name": "Lyon",
+    "date": "2026-06-15",
+    "streetCount": 16,
+    "totalMeters": 13906,
+    "dir": "FR/69/69001/Lyon"
+  },
+  {
+    "id": "FR-74290-Talloires",
+    "country": "FRA",
+    "region": "Auvergne-Rhône-Alpes",
+    "department": "74",
+    "postalCode": "74290",
+    "name": "Talloires",
+    "date": "2026-06-15",
+    "streetCount": 16,
+    "totalMeters": 27993,
+    "dir": "FR/74/74290/Talloires"
+  }
+]

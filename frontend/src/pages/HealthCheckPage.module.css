@@ -1,0 +1,73 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.statusOk,
+.statusError {
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border-left: 4px solid;
+}
+
+.statusOk {
+  background: #e6ffe6;
+  border-left-color: #00cc00;
+}
+
+.statusError {
+  background: #ffe6e6;
+  border-left-color: #cc0000;
+}
+
+.statusOk h2,
+.statusError h2 {
+  margin: 0 0 0.5rem;
+}
+
+.checks {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checkOk,
+.checkError {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.checkOk {
+  background: #f0f0f0;
+}
+
+.checkError {
+  background: #fff0f0;
+}
+
+.refreshButton {
+  padding: 0.6rem 1.5rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.refreshButton:hover {
+  background: #0052a3;
+}

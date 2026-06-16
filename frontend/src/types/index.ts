@@ -63,7 +63,10 @@ export interface LeaderboardEntry {
 export interface PathData {
   id: string
   cityId: string
+  /** Full optimised route, may repeat streets. Used for start/end pins and distance. */
   coordinates: [number, number][]
+  /** Each unique street geometry once, for map rendering. */
+  streetGeometries: [number, number][][]
   totalDistance: number
   streetCount: number
 }

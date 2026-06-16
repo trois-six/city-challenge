@@ -511,7 +511,14 @@ struct EditionSummary {
 struct PathFile {
     id: String,
     city_id: String,
+    /// Optimised route visiting every street (may repeat streets at dead ends
+    /// or between disconnected components). Used for distance calculation and
+    /// start/end pin placement; NOT used for map rendering.
     coordinates: Vec<(f64, f64)>,
+    /// Each unique street's geometry, in the order streets were fetched from
+    /// Overpass. Used for map rendering: each street is drawn exactly once,
+    /// regardless of how many times the route traverses it.
+    street_geometries: Vec<Vec<(f64, f64)>>,
     total_distance: f64,
     street_count: i64,
 }
@@ -614,6 +621,7 @@ fn process_city(
             id: edition_id.clone(),
             city_id: city.id.to_string(),
             coordinates: route.coordinates,
+            street_geometries: streets.iter().map(|s| s.nodes.clone()).collect(),
             total_distance: format_distance(route.total_distance_km),
             street_count: streets.len() as i64,
         },

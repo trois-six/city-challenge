@@ -92,6 +92,9 @@ const pathFixture: PathData = {
     [48.8566, 2.3522],
     [48.86, 2.35],
   ],
+  streetGeometries: [
+    [[48.8566, 2.3522], [48.86, 2.35]],
+  ],
   totalDistance: 27.356,
   streetCount: 42,
 }

@@ -25,17 +25,17 @@
   },
   {
     "rank": 4,
-    "playerId": "player-fatima",
-    "playerName": "Fatima Garcia",
-    "country": "ESP",
+    "playerId": "player-hana",
+    "playerName": "Hana Visser",
+    "country": "NLD",
     "citiesCompleted": 1,
     "totalDistance": 124.269
   },
   {
     "rank": 5,
-    "playerId": "player-hana",
-    "playerName": "Hana Visser",
-    "country": "NLD",
+    "playerId": "player-fatima",
+    "playerName": "Fatima Garcia",
+    "country": "ESP",
     "citiesCompleted": 1,
     "totalDistance": 124.269
   },
@@ -49,17 +49,17 @@
   },
   {
     "rank": 7,
-    "playerId": "player-charlie",
-    "playerName": "Charlie Smith",
-    "country": "GBR",
+    "playerId": "player-dana",
+    "playerName": "Dana Müller",
+    "country": "DEU",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   },
   {
     "rank": 8,
-    "playerId": "player-dana",
-    "playerName": "Dana Müller",
-    "country": "DEU",
+    "playerId": "player-charlie",
+    "playerName": "Charlie Smith",
+    "country": "GBR",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   }

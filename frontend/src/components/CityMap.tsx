@@ -21,38 +21,6 @@ function pinIcon(color: string, label: string) {
   })
 }
 
-function haversineM(a: L.LatLngTuple, b: L.LatLngTuple): number {
-  const R = 6_371_000
-  const dLat = ((b[0] - a[0]) * Math.PI) / 180
-  const dLng = ((b[1] - a[1]) * Math.PI) / 180
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a[0] * Math.PI) / 180) * Math.cos((b[0] * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
-  return 2 * R * Math.asin(Math.sqrt(h))
-}
-
-/**
- * Split a flat coordinate list into road-following segments by cutting
- * wherever consecutive points jump more than `thresholdM` metres apart.
- * Those jumps are straight-line transfers between disconnected components
- * of the street network — they cross buildings and should not be drawn.
- */
-function splitAtTransfers(coords: L.LatLngTuple[], thresholdM = 150): L.LatLngTuple[][] {
-  if (coords.length === 0) return []
-  const segments: L.LatLngTuple[][] = []
-  let current: L.LatLngTuple[] = [coords[0]]
-  for (let i = 1; i < coords.length; i++) {
-    if (haversineM(coords[i - 1], coords[i]) > thresholdM) {
-      segments.push(current)
-      current = [coords[i]]
-    } else {
-      current.push(coords[i])
-    }
-  }
-  segments.push(current)
-  return segments
-}
-
 export default function CityMap({ pathData }: { pathData: PathData }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
@@ -70,22 +38,27 @@ export default function CityMap({ pathData }: { pathData: PathData }) {
       }).addTo(map.current)
     }
 
-    const latlngs: L.LatLngTuple[] = pathData.coordinates.map(([lat, lng]) => [lat, lng])
-    const segments = splitAtTransfers(latlngs)
-
-    // Draw each road-following segment as its own polyline, skipping the
-    // straight-line transfers between disconnected street components.
-    const allBounds = L.latLngBounds(latlngs)
-    for (const seg of segments) {
-      L.polyline(seg, { color: '#0066cc', weight: 3, opacity: 0.8 }).addTo(map.current!)
+    // Render each street exactly once, regardless of how many times the
+    // optimised route traverses it. Dead ends show one line (not two
+    // overlapping back-and-forth traces); disconnected components produce
+    // no phantom straight-line jumps across buildings.
+    const allPoints: L.LatLngTuple[] = []
+    for (const street of pathData.streetGeometries) {
+      const pts: L.LatLngTuple[] = street.map(([lat, lng]) => [lat, lng])
+      L.polyline(pts, { color: '#0066cc', weight: 3, opacity: 0.8 }).addTo(map.current!)
+      allPoints.push(...pts)
     }
 
-    const start = latlngs[0]
-    const end = latlngs[latlngs.length - 1]
+    // Start/end pins come from the route sequence (first and last visited point).
+    const start: L.LatLngTuple = [pathData.coordinates[0][0], pathData.coordinates[0][1]]
+    const end: L.LatLngTuple = [
+      pathData.coordinates[pathData.coordinates.length - 1][0],
+      pathData.coordinates[pathData.coordinates.length - 1][1],
+    ]
     L.marker(start, { icon: pinIcon('#22a722', t('map.startLabel')), title: t('map.startTitle') }).addTo(map.current)
     L.marker(end, { icon: pinIcon('#cc2200', t('map.endLabel')), title: t('map.endTitle') }).addTo(map.current)
 
-    map.current.fitBounds(allBounds.pad(0.1))
+    map.current.fitBounds(L.latLngBounds(allPoints).pad(0.1))
   }, [pathData, t])
 
   return <div ref={mapRef} className={styles.map} />

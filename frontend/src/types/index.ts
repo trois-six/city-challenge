@@ -45,7 +45,7 @@ export interface Player {
   results: PlayerResult[]
 }
 
-export interface Achievement {
+interface Achievement {
   type: 'first_city' | 'all_streets' | 'fastest'
   cityId: string
   date: string

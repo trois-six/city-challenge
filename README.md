@@ -1,9 +1,14 @@
 # City Challenge
 
-A bilingual (FR/EN) web app for a "run every street" city challenge: each
-edition computes the optimal route covering every street of a city (a
-Chinese Postman / Route Inspection problem), and tracks player results,
-leaderboards and achievements.
+Every street. Every corner. Every city.
+
+What if your city became your playground — and every run, walk, or ride a step closer to glory?
+
+City Challenge is the ultimate urban exploration game that turns the streets you live on into a competitive arena. The goal is simple yet addictive: cover every single street of a city, as fast as possible. Track your progress, climb the leaderboard, and prove you know your city better than anyone else.
+
+Whether you're a seasoned runner, a casual cyclist, or just someone who loves to wander — City Challenge transforms your everyday movement into an epic quest. Earn rewards as you push your completion percentage higher, unlock achievements as you conquer new cities, and compete against explorers from around the world.
+
+One city at a time. One street at a time. The map is waiting. The clock is ticking. The challenge is yours.
 
 ## Architecture
 

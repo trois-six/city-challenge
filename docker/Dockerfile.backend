@@ -19,6 +19,10 @@ RUN cargo chef prepare --recipe-path recipe.json
 # full dependency build (~5 min) only runs when deps actually change.
 FROM chef AS builder
 COPY backend/.cargo ./.cargo
+# .cargo/config.toml sets target-dir = "output" (a relative path). Set the
+# same value as an absolute env var so cargo-chef's cleanup step resolves
+# the correct directory instead of falling back to the default /app/target.
+ENV CARGO_TARGET_DIR=/app/output
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 

@@ -884,10 +884,7 @@ async fn main() -> Result<()> {
     // Overpass is unreachable (e.g. offline CI). By default a fetch failure is
     // a hard error rather than silently producing grid data.
     let allow_synthetic = args.iter().any(|a| a == "--allow-synthetic");
-    let requested_ids: Vec<String> = args
-        .into_iter()
-        .filter(|a| !a.starts_with("--"))
-        .collect();
+    let requested_ids: Vec<String> = args.into_iter().filter(|a| !a.starts_with("--")).collect();
     let cities: Vec<&CityConfig> = if requested_ids.is_empty() {
         CITY_REGISTRY.iter().collect()
     } else {

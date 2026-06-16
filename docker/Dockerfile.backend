@@ -1,35 +1,38 @@
-# Build stage
-FROM rust:1.96-alpine AS builder
-
-WORKDIR /app
-
-# Install dependencies
+# ── Stage 1: base image with system deps + cargo-chef ────────────────────────
+# This layer is rebuilt only when the Rust version or system packages change.
+FROM rust:1.96-alpine AS chef
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev
-
-COPY backend/Cargo.toml backend/Cargo.lock ./
-COPY backend/.cargo ./.cargo
-COPY backend/src ./src
-
-# Build the application
-RUN cargo build --release
-
-# Production stage
-FROM alpine:latest
-
+RUN cargo install cargo-chef --locked
 WORKDIR /app
 
-# Install runtime dependencies
+# ── Stage 2: generate dependency recipe ──────────────────────────────────────
+# Reads Cargo.toml / Cargo.lock and produces a recipe.json that describes
+# exactly which crates need to be compiled. Does NOT compile anything.
+FROM chef AS planner
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/src ./src
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ── Stage 3: compile dependencies ────────────────────────────────────────────
+# This layer is cached as long as recipe.json (= Cargo.toml + Cargo.lock)
+# does not change. Changing only source files reuses this layer, so the
+# full dependency build (~5 min) only runs when deps actually change.
+FROM chef AS builder
+COPY backend/.cargo ./.cargo
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Compile the application binary (fast — deps are already built above).
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/src ./src
+RUN cargo build --release --bin server
+
+# ── Stage 4: minimal runtime image ───────────────────────────────────────────
+FROM alpine:latest
+WORKDIR /app
 RUN apk add --no-cache ca-certificates
-
-# Copy binary from builder
 COPY --from=builder /app/output/release/server ./server
-
-# Expose port
 EXPOSE 8080
-
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/api/health || exit 1
-
-# Run the server
 CMD ["./server"]

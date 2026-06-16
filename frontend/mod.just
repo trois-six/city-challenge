@@ -1,8 +1,10 @@
 # Recipes run with the frontend directory as working directory.
 
-# Install dependencies (matches package-lock.json exactly)
+# Install dependencies (matches package-lock.json exactly).
+# Skips npm ci when node_modules is already up-to-date so that recipes
+# depending on this step are fast when nothing has changed.
 install:
-    npm ci
+    @cmp -s node_modules/.package-lock.json package-lock.json 2>/dev/null || npm ci
 
 build: install
     npm run build

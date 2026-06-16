@@ -74,7 +74,7 @@ docker-build:
     {{compose}} build
 
 docker-up:
-    {{compose}} up
+    {{compose}} up --build
 
 docker-down:
     {{compose}} down

@@ -1,12 +1,16 @@
 //! Data-build pipeline.
 //!
 //! Fetches street data from the Overpass API (OSM) for a registry of cities,
-//! falling back to a deterministic synthetic street grid when Overpass is
-//! unreachable, then writes the per-city manifests and global manifests
-//! consumed by the frontend under `frontend/public/data/`.
+//! then writes the per-city manifests and global manifests consumed by the
+//! frontend under `frontend/public/data/`.
+//!
+//! A failed/empty Overpass fetch is a hard error by default (the city is
+//! skipped) so the build never silently ships fake data. Pass
+//! `--allow-synthetic` to fall back to a deterministic synthetic street grid
+//! instead — useful for offline CI.
 //!
 //! Run from the `backend/` directory:
-//!   cargo run --release --bin build-data [CITY_ID ...]
+//!   cargo run --release --bin build-data [--allow-synthetic] [CITY_ID ...]
 
 use anyhow::Result;
 use chrono::Utc;
@@ -152,6 +156,11 @@ struct StreetData {
     name: String,
     nodes: Vec<(f64, f64)>,
     length: f64,
+    /// OSM node ids aligned 1:1 with `nodes`. Empty for synthetic data.
+    /// Used to split ways at shared intersections when building the route
+    /// graph (see [`split_into_segments`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    node_ids: Vec<i64>,
 }
 
 /// Calculate distance in kilometers along a polyline using the haversine formula.
@@ -187,6 +196,10 @@ struct OverpassElement {
     tags: Option<OverpassTags>,
     #[serde(default)]
     geometry: Option<Vec<OverpassNode>>,
+    /// OSM node ids for a way, aligned 1:1 with `geometry`. Present because
+    /// the query uses `out body geom`.
+    #[serde(default)]
+    nodes: Option<Vec<i64>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -271,11 +284,17 @@ async fn fetch_streets_from_overpass(
                         .tags
                         .and_then(|tags| tags.name)
                         .unwrap_or_else(|| format!("Street {}", element.id));
+                    // Keep node ids only when they align 1:1 with the geometry.
+                    let node_ids = element
+                        .nodes
+                        .filter(|ids| ids.len() == nodes.len())
+                        .unwrap_or_default();
                     streets.push(StreetData {
                         id: format!("way-{}", element.id),
                         name,
                         nodes,
                         length,
+                        node_ids,
                     });
                 }
             }
@@ -311,6 +330,7 @@ fn generate_synthetic_streets(city: &CityConfig) -> Vec<StreetData> {
             name: format!("Avenue {}", row + 1),
             length: calculate_distance(&nodes),
             nodes,
+            node_ids: Vec::new(),
         });
     }
 
@@ -323,6 +343,7 @@ fn generate_synthetic_streets(city: &CityConfig) -> Vec<StreetData> {
             name: format!("Rue {}", col + 1),
             length: calculate_distance(&nodes),
             nodes,
+            node_ids: Vec::new(),
         });
     }
 
@@ -338,6 +359,7 @@ fn generate_synthetic_streets(city: &CityConfig) -> Vec<StreetData> {
             name: format!("Impasse des Lilas {}", i + 1),
             length: calculate_distance(&nodes),
             nodes,
+            node_ids: Vec::new(),
         });
     }
 
@@ -348,15 +370,60 @@ fn generate_synthetic_streets(city: &CityConfig) -> Vec<StreetData> {
 /// compute a walk covering every street (Route Inspection / Chinese Postman
 /// problem). See [`city_challenge_backend::route`] for the algorithm.
 fn optimize_route(streets: &[StreetData]) -> route::RouteResult {
-    let segments: Vec<route::StreetSegment> = streets
-        .iter()
-        .map(|street| route::StreetSegment {
-            nodes: street.nodes.clone(),
-            length: street.length,
-        })
-        .collect();
-
+    let segments = split_into_segments(streets);
     route::optimize_route(&segments)
+}
+
+/// Split each OSM way into edges at every node it shares with another way, so
+/// that mid-way intersections become real graph vertices. Without this, two
+/// streets that cross only at an interior node look disconnected (the graph
+/// only joins ways at their endpoints), fragmenting the network into hundreds
+/// of components and inflating the route with out-and-back detours.
+///
+/// Streets without node ids (synthetic data) pass through as a single segment
+/// identified by their endpoint coordinates.
+fn split_into_segments(streets: &[StreetData]) -> Vec<route::StreetSegment> {
+    // How many ways each node id belongs to; a node shared by >= 2 ways is an
+    // intersection we must split at.
+    let mut usage: HashMap<i64, u32> = HashMap::new();
+    for street in streets {
+        for &id in &street.node_ids {
+            *usage.entry(id).or_default() += 1;
+        }
+    }
+
+    let mut segments = Vec::new();
+    for street in streets {
+        if street.node_ids.len() != street.nodes.len() || street.node_ids.len() < 2 {
+            segments.push(route::StreetSegment {
+                nodes: street.nodes.clone(),
+                length: street.length,
+                from_id: None,
+                to_id: None,
+            });
+            continue;
+        }
+
+        // Split points: the two endpoints plus any interior node shared with
+        // another way.
+        let last = street.node_ids.len() - 1;
+        let split_at: Vec<usize> = (0..street.node_ids.len())
+            .filter(|&i| i == 0 || i == last || usage[&street.node_ids[i]] >= 2)
+            .collect();
+
+        for pair in split_at.windows(2) {
+            let (start, end) = (pair[0], pair[1]);
+            let nodes = street.nodes[start..=end].to_vec();
+            segments.push(route::StreetSegment {
+                length: calculate_distance(&nodes),
+                from_id: Some(street.node_ids[start]),
+                to_id: Some(street.node_ids[end]),
+                nodes,
+            });
+        }
+    }
+
+    segments
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -812,7 +879,15 @@ fn build_global_manifests(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let requested_ids: Vec<String> = std::env::args().skip(1).collect();
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    // `--allow-synthetic` opts in to the deterministic fake street grid when
+    // Overpass is unreachable (e.g. offline CI). By default a fetch failure is
+    // a hard error rather than silently producing grid data.
+    let allow_synthetic = args.iter().any(|a| a == "--allow-synthetic");
+    let requested_ids: Vec<String> = args
+        .into_iter()
+        .filter(|a| !a.starts_with("--"))
+        .collect();
     let cities: Vec<&CityConfig> = if requested_ids.is_empty() {
         CITY_REGISTRY.iter().collect()
     } else {
@@ -838,7 +913,16 @@ async fn main() -> Result<()> {
     println!("Starting data build for {} city/cities...", cities.len());
 
     let paths = Paths::new();
-    let client = reqwest::Client::new();
+    // Overpass mirrors reject requests without a User-Agent with HTTP 406, so
+    // an explicit UA is mandatory — without it every fetch fails and the build
+    // silently falls back to the synthetic grid.
+    let client = reqwest::Client::builder()
+        .user_agent(concat!(
+            "city-challenge/",
+            env!("CARGO_PKG_VERSION"),
+            " (+https://github.com/trois-six/city-challenge)"
+        ))
+        .build()?;
     let mut processed: Vec<(&CityConfig, EditionSummary, String)> = Vec::new();
 
     for city in &cities {
@@ -849,13 +933,21 @@ async fn main() -> Result<()> {
                 println!("  fetched {} streets from Overpass", streets.len());
                 streets
             }
-            Ok(_) => {
+            Ok(_) if allow_synthetic => {
                 println!("  Overpass API returned no streets, using synthetic street grid");
                 generate_synthetic_streets(city)
             }
-            Err(error) => {
+            Err(error) if allow_synthetic => {
                 println!("  Overpass API unavailable ({error}), using synthetic street grid");
                 generate_synthetic_streets(city)
+            }
+            Ok(_) => {
+                eprintln!("Error: Overpass returned no streets for {} and --allow-synthetic was not set; skipping", city.name);
+                continue;
+            }
+            Err(error) => {
+                eprintln!("Error: Overpass fetch failed for {} ({error}) and --allow-synthetic was not set; skipping", city.name);
+                continue;
             }
         };
 

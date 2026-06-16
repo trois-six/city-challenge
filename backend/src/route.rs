@@ -31,6 +31,19 @@ const EARTH_RADIUS_KM: f64 = 6371.0;
 pub struct StreetSegment {
     pub nodes: Vec<(f64, f64)>,
     pub length: f64,
+    /// OSM node id of the first/last node, when available. Using stable node
+    /// ids makes intersections exact; segments without ids (e.g. synthetic
+    /// data) fall back to snapping their endpoint coordinates.
+    pub from_id: Option<i64>,
+    pub to_id: Option<i64>,
+}
+
+/// Identity of a graph vertex: an exact OSM node id when known, otherwise the
+/// snapped endpoint coordinate.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum NodeKey {
+    Id(i64),
+    Coord(i64, i64),
 }
 
 pub struct RouteResult {
@@ -99,15 +112,25 @@ pub fn optimize_route(streets: &[StreetSegment]) -> RouteResult {
 /// Build the street graph: nodes are snapped segment endpoints, edges are
 /// street segments connecting them.
 fn build_graph(streets: &[StreetSegment]) -> (Vec<(f64, f64)>, Vec<Edge>) {
-    let mut node_index: HashMap<(i64, i64), usize> = HashMap::new();
+    let mut node_index: HashMap<NodeKey, usize> = HashMap::new();
     let mut node_coords: Vec<(f64, f64)> = Vec::new();
     let mut edges = Vec::with_capacity(streets.len());
 
     for (street_index, street) in streets.iter().enumerate() {
         let first = street.nodes[0];
         let last = *street.nodes.last().expect("street has nodes");
-        let from = get_or_insert_node(first, &mut node_index, &mut node_coords);
-        let to = get_or_insert_node(last, &mut node_index, &mut node_coords);
+        let from = get_or_insert_node(
+            node_key(street.from_id, first),
+            first,
+            &mut node_index,
+            &mut node_coords,
+        );
+        let to = get_or_insert_node(
+            node_key(street.to_id, last),
+            last,
+            &mut node_index,
+            &mut node_coords,
+        );
         edges.push(Edge {
             street_index,
             from,
@@ -119,12 +142,22 @@ fn build_graph(streets: &[StreetSegment]) -> (Vec<(f64, f64)>, Vec<Edge>) {
     (node_coords, edges)
 }
 
+fn node_key(id: Option<i64>, coord: (f64, f64)) -> NodeKey {
+    match id {
+        Some(id) => NodeKey::Id(id),
+        None => {
+            let (lat, lng) = snap(coord);
+            NodeKey::Coord(lat, lng)
+        }
+    }
+}
+
 fn get_or_insert_node(
+    key: NodeKey,
     coord: (f64, f64),
-    node_index: &mut HashMap<(i64, i64), usize>,
+    node_index: &mut HashMap<NodeKey, usize>,
     node_coords: &mut Vec<(f64, f64)>,
 ) -> usize {
-    let key = snap(coord);
     if let Some(&index) = node_index.get(&key) {
         return index;
     }
@@ -400,7 +433,12 @@ mod tests {
             .windows(2)
             .map(|pair| haversine_km(pair[0], pair[1]))
             .sum();
-        StreetSegment { nodes, length }
+        StreetSegment {
+            nodes,
+            length,
+            from_id: None,
+            to_id: None,
+        }
     }
 
     #[test]
@@ -447,6 +485,40 @@ mod tests {
 
         assert_eq!(result.coordinates.len(), 4);
         assert!((result.total_distance_km - expected_total).abs() < 1e-9);
+    }
+
+    fn id_segment(nodes: Vec<(f64, f64)>, from_id: i64, to_id: i64) -> StreetSegment {
+        let length = nodes
+            .windows(2)
+            .map(|pair| haversine_km(pair[0], pair[1]))
+            .sum();
+        StreetSegment {
+            nodes,
+            length,
+            from_id: Some(from_id),
+            to_id: Some(to_id),
+        }
+    }
+
+    #[test]
+    fn segments_are_joined_by_shared_node_ids() {
+        // A triangle whose vertices are identified by OSM node ids 1/2/3.
+        // Connectivity comes purely from the shared ids, so the three edges
+        // form a single even-degree (Eulerian) circuit covered exactly once.
+        let a = (48.0, 2.0);
+        let b = (48.0, 2.001);
+        let c = (48.001, 2.0005);
+        let streets = vec![
+            id_segment(vec![a, b], 1, 2),
+            id_segment(vec![b, c], 2, 3),
+            id_segment(vec![c, a], 3, 1),
+        ];
+        let expected: f64 = streets.iter().map(|s| s.length).sum();
+
+        let result = optimize_route(&streets);
+
+        assert_eq!(result.coordinates.len(), 6);
+        assert!((result.total_distance_km - expected).abs() < 1e-9);
     }
 
     #[test]

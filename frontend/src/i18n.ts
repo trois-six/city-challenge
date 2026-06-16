@@ -87,6 +87,12 @@ const resources = {
         failed: 'Échec',
         refresh: 'Actualiser',
       },
+      map: {
+        startLabel: 'D',
+        endLabel: 'A',
+        startTitle: 'Départ',
+        endTitle: 'Arrivée',
+      },
       common: {
         loading: 'Chargement...',
         error: 'Une erreur est survenue',
@@ -179,6 +185,12 @@ const resources = {
         ok: 'OK',
         failed: 'Failed',
         refresh: 'Refresh',
+      },
+      map: {
+        startLabel: 'S',
+        endLabel: 'E',
+        startTitle: 'Start',
+        endTitle: 'End',
       },
       common: {
         loading: 'Loading...',

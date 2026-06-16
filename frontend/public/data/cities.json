@@ -6,9 +6,9 @@
     "department": "75",
     "postalCode": "75001",
     "name": "Paris",
-    "date": "2026-06-15",
-    "streetCount": 16,
-    "totalMeters": 13661,
+    "date": "2026-06-16",
+    "streetCount": 2236,
+    "totalMeters": 124721,
     "dir": "FR/75/75001/Paris"
   },
   {
@@ -18,9 +18,9 @@
     "department": "69",
     "postalCode": "69001",
     "name": "Lyon",
-    "date": "2026-06-15",
-    "streetCount": 16,
-    "totalMeters": 13906,
+    "date": "2026-06-16",
+    "streetCount": 3413,
+    "totalMeters": 124269,
     "dir": "FR/69/69001/Lyon"
   },
   {
@@ -30,9 +30,9 @@
     "department": "74",
     "postalCode": "74290",
     "name": "Talloires",
-    "date": "2026-06-15",
-    "streetCount": 16,
-    "totalMeters": 27993,
+    "date": "2026-06-16",
+    "streetCount": 575,
+    "totalMeters": 56344,
     "dir": "FR/74/74290/Talloires"
   }
 ]

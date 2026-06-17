@@ -371,11 +371,23 @@ fn classify_turn(angle: f64) -> &'static str {
     if abs < 20.0 {
         "straight"
     } else if abs < 60.0 {
-        if angle > 0.0 { "slight_right" } else { "slight_left" }
+        if angle > 0.0 {
+            "slight_right"
+        } else {
+            "slight_left"
+        }
     } else if abs < 120.0 {
-        if angle > 0.0 { "turn_right" } else { "turn_left" }
+        if angle > 0.0 {
+            "turn_right"
+        } else {
+            "turn_left"
+        }
     } else if abs < 160.0 {
-        if angle > 0.0 { "sharp_right" } else { "sharp_left" }
+        if angle > 0.0 {
+            "sharp_right"
+        } else {
+            "sharp_left"
+        }
     } else {
         "uturn"
     }
@@ -406,7 +418,11 @@ fn segment_entry_bearing(nodes: &[(f64, f64)], reversed: bool) -> Option<f64> {
 }
 
 fn segment_start_coord(nodes: &[(f64, f64)], reversed: bool) -> (f64, f64) {
-    if reversed { *nodes.last().unwrap() } else { nodes[0] }
+    if reversed {
+        *nodes.last().unwrap()
+    } else {
+        nodes[0]
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -499,7 +515,11 @@ fn build_route_steps(
     // Final "arrive" marker at the last coordinate visited.
     let &(last_idx, last_rev) = visits.last().unwrap();
     let last_nodes = &segments[last_idx].nodes;
-    let arrive = if last_rev { last_nodes[0] } else { *last_nodes.last().unwrap() };
+    let arrive = if last_rev {
+        last_nodes[0]
+    } else {
+        *last_nodes.last().unwrap()
+    };
     steps.push(RouteStepData {
         instruction: "arrive".to_string(),
         street_name: String::new(),
@@ -515,7 +535,12 @@ fn build_route_steps(
 fn optimize_and_plan_route(streets: &[StreetData]) -> (route::RouteResult, Vec<RouteStepData>) {
     let (segments, segment_to_street) = split_into_segments(streets);
     let result = route::optimize_route(&segments);
-    let steps = build_route_steps(&result.segment_visits, &segments, &segment_to_street, streets);
+    let steps = build_route_steps(
+        &result.segment_visits,
+        &segments,
+        &segment_to_street,
+        streets,
+    );
     (result, steps)
 }
 

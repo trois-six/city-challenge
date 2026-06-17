@@ -4,6 +4,14 @@
   margin: 0 auto;
 }
 
+.container h1 {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--amber);
+  text-shadow: 0 0 14px rgba(255, 178, 61, .35);
+  margin-bottom: 1.5rem;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 1rem;

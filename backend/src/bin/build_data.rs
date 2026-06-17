@@ -366,12 +366,174 @@ fn generate_synthetic_streets(city: &CityConfig) -> Vec<StreetData> {
     streets
 }
 
-/// Convert the fetched/synthetic streets into the route solver's input and
-/// compute a walk covering every street (Route Inspection / Chinese Postman
-/// problem). See [`city_challenge_backend::route`] for the algorithm.
-fn optimize_route(streets: &[StreetData]) -> route::RouteResult {
-    let segments = split_into_segments(streets);
-    route::optimize_route(&segments)
+/// Forward bearing in degrees [0, 360) from `from` to `to`.
+fn bearing(from: (f64, f64), to: (f64, f64)) -> f64 {
+    let lat1 = from.0.to_radians();
+    let lat2 = to.0.to_radians();
+    let dlng = (to.1 - from.1).to_radians();
+    let y = dlng.sin() * lat2.cos();
+    let x = lat1.cos() * lat2.sin() - lat1.sin() * lat2.cos() * dlng.cos();
+    let b = y.atan2(x).to_degrees();
+    ((b % 360.0) + 360.0) % 360.0
+}
+
+/// Signed turn angle in (-180, 180]: positive = right, negative = left.
+fn turn_angle(in_bearing: f64, out_bearing: f64) -> f64 {
+    ((out_bearing - in_bearing + 180.0).rem_euclid(360.0)) - 180.0
+}
+
+/// Map a signed turn angle to an instruction key understood by the frontend.
+fn classify_turn(angle: f64) -> &'static str {
+    let abs = angle.abs();
+    if abs < 20.0 {
+        "straight"
+    } else if abs < 60.0 {
+        if angle > 0.0 { "slight_right" } else { "slight_left" }
+    } else if abs < 120.0 {
+        if angle > 0.0 { "turn_right" } else { "turn_left" }
+    } else if abs < 160.0 {
+        if angle > 0.0 { "sharp_right" } else { "sharp_left" }
+    } else {
+        "uturn"
+    }
+}
+
+fn segment_exit_bearing(nodes: &[(f64, f64)], reversed: bool) -> Option<f64> {
+    if nodes.len() < 2 {
+        return None;
+    }
+    if reversed {
+        Some(bearing(nodes[1], nodes[0]))
+    } else {
+        let n = nodes.len();
+        Some(bearing(nodes[n - 2], nodes[n - 1]))
+    }
+}
+
+fn segment_entry_bearing(nodes: &[(f64, f64)], reversed: bool) -> Option<f64> {
+    if nodes.len() < 2 {
+        return None;
+    }
+    if reversed {
+        let n = nodes.len();
+        Some(bearing(nodes[n - 1], nodes[n - 2]))
+    } else {
+        Some(bearing(nodes[0], nodes[1]))
+    }
+}
+
+fn segment_start_coord(nodes: &[(f64, f64)], reversed: bool) -> (f64, f64) {
+    if reversed { *nodes.last().unwrap() } else { nodes[0] }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RouteStepData {
+    /// One of: "start", "straight", "slight_left", "slight_right",
+    /// "turn_left", "turn_right", "sharp_left", "sharp_right", "uturn", "arrive".
+    instruction: String,
+    street_name: String,
+    /// Distance in metres for this step (rounded to integer).
+    distance_m: f64,
+    /// Lat/lng of the maneuver point (for map focus).
+    coordinate: (f64, f64),
+    /// Full polyline geometry of this step (all node coordinates in order of travel).
+    geometry: Vec<(f64, f64)>,
+}
+
+fn seg_coords(nodes: &[(f64, f64)], reversed: bool) -> Vec<(f64, f64)> {
+    if reversed {
+        nodes.iter().rev().copied().collect()
+    } else {
+        nodes.to_vec()
+    }
+}
+
+/// Build turn-by-turn navigation steps from the solver's segment visit sequence.
+/// Consecutive visits on the same named street are merged; a turn instruction
+/// is computed at each street boundary.
+fn build_route_steps(
+    visits: &[(usize, bool)],
+    segments: &[route::StreetSegment],
+    segment_to_street: &[usize],
+    streets: &[StreetData],
+) -> Vec<RouteStepData> {
+    if visits.is_empty() {
+        return Vec::new();
+    }
+
+    let mut steps: Vec<RouteStepData> = Vec::new();
+    let mut group_street_idx = segment_to_street[visits[0].0];
+    let mut group_distance: f64 = 0.0;
+    let mut group_coord = segment_start_coord(&segments[visits[0].0].nodes, visits[0].1);
+    let mut group_geometry: Vec<(f64, f64)> = Vec::new();
+    let mut instruction = "start".to_string();
+    let mut prev_exit: Option<f64> = None;
+
+    for &(seg_idx, reversed) in visits {
+        let seg = &segments[seg_idx];
+        let street_idx = segment_to_street[seg_idx];
+
+        if street_idx != group_street_idx {
+            steps.push(RouteStepData {
+                instruction: instruction.clone(),
+                street_name: streets[group_street_idx].name.clone(),
+                distance_m: group_distance.round(),
+                coordinate: group_coord,
+                geometry: std::mem::take(&mut group_geometry),
+            });
+            let entry = segment_entry_bearing(&seg.nodes, reversed);
+            instruction = match (prev_exit, entry) {
+                (Some(exit), Some(ent)) => classify_turn(turn_angle(exit, ent)).to_string(),
+                _ => "straight".to_string(),
+            };
+            group_street_idx = street_idx;
+            group_distance = 0.0;
+            group_coord = segment_start_coord(&seg.nodes, reversed);
+        }
+
+        // Append this segment's nodes, skipping the first when chaining (it
+        // duplicates the previous segment's last point).
+        let coords = seg_coords(&seg.nodes, reversed);
+        if group_geometry.is_empty() {
+            group_geometry = coords;
+        } else {
+            group_geometry.extend_from_slice(&coords[1..]);
+        }
+
+        group_distance += seg.length * 1000.0;
+        prev_exit = segment_exit_bearing(&seg.nodes, reversed);
+    }
+
+    steps.push(RouteStepData {
+        instruction,
+        street_name: streets[group_street_idx].name.clone(),
+        distance_m: group_distance.round(),
+        coordinate: group_coord,
+        geometry: group_geometry,
+    });
+
+    // Final "arrive" marker at the last coordinate visited.
+    let &(last_idx, last_rev) = visits.last().unwrap();
+    let last_nodes = &segments[last_idx].nodes;
+    let arrive = if last_rev { last_nodes[0] } else { *last_nodes.last().unwrap() };
+    steps.push(RouteStepData {
+        instruction: "arrive".to_string(),
+        street_name: String::new(),
+        distance_m: 0.0,
+        coordinate: arrive,
+        geometry: Vec::new(),
+    });
+
+    steps
+}
+
+/// Compute the optimised route and build turn-by-turn navigation steps.
+fn optimize_and_plan_route(streets: &[StreetData]) -> (route::RouteResult, Vec<RouteStepData>) {
+    let (segments, segment_to_street) = split_into_segments(streets);
+    let result = route::optimize_route(&segments);
+    let steps = build_route_steps(&result.segment_visits, &segments, &segment_to_street, streets);
+    (result, steps)
 }
 
 /// Split each OSM way into edges at every node it shares with another way, so
@@ -382,7 +544,7 @@ fn optimize_route(streets: &[StreetData]) -> route::RouteResult {
 ///
 /// Streets without node ids (synthetic data) pass through as a single segment
 /// identified by their endpoint coordinates.
-fn split_into_segments(streets: &[StreetData]) -> Vec<route::StreetSegment> {
+fn split_into_segments(streets: &[StreetData]) -> (Vec<route::StreetSegment>, Vec<usize>) {
     // How many ways each node id belongs to; a node shared by >= 2 ways is an
     // intersection we must split at.
     let mut usage: HashMap<i64, u32> = HashMap::new();
@@ -392,8 +554,10 @@ fn split_into_segments(streets: &[StreetData]) -> Vec<route::StreetSegment> {
         }
     }
 
-    let mut segments = Vec::new();
-    for street in streets {
+    let mut segments: Vec<route::StreetSegment> = Vec::new();
+    let mut segment_to_street: Vec<usize> = Vec::new();
+
+    for (street_idx, street) in streets.iter().enumerate() {
         if street.node_ids.len() != street.nodes.len() || street.node_ids.len() < 2 {
             segments.push(route::StreetSegment {
                 nodes: street.nodes.clone(),
@@ -401,6 +565,7 @@ fn split_into_segments(streets: &[StreetData]) -> Vec<route::StreetSegment> {
                 from_id: None,
                 to_id: None,
             });
+            segment_to_street.push(street_idx);
             continue;
         }
 
@@ -420,10 +585,11 @@ fn split_into_segments(streets: &[StreetData]) -> Vec<route::StreetSegment> {
                 to_id: Some(street.node_ids[end]),
                 nodes,
             });
+            segment_to_street.push(street_idx);
         }
     }
 
-    segments
+    (segments, segment_to_street)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -519,6 +685,8 @@ struct PathFile {
     /// Overpass. Used for map rendering: each street is drawn exactly once,
     /// regardless of how many times the route traverses it.
     street_geometries: Vec<Vec<(f64, f64)>>,
+    /// Turn-by-turn navigation steps for the route panel.
+    route_steps: Vec<RouteStepData>,
     total_distance: f64,
     street_count: i64,
 }
@@ -612,7 +780,7 @@ fn process_city(
     // Path data: the optimized route covering every street (may exceed the
     // network's total length when dead ends or disconnected streets force
     // backtracking/transfers).
-    let route = optimize_route(&streets);
+    let (route, route_steps) = optimize_and_plan_route(&streets);
     write_json(
         &absolute_dir
             .join("paths")
@@ -622,6 +790,7 @@ fn process_city(
             city_id: city.id.to_string(),
             coordinates: route.coordinates,
             street_geometries: streets.iter().map(|s| s.nodes.clone()).collect(),
+            route_steps,
             total_distance: format_distance(route.total_distance_km),
             street_count: streets.len() as i64,
         },

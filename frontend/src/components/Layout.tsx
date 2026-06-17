@@ -3,60 +3,39 @@ import { useTranslation } from 'react-i18next'
 import styles from './Layout.module.css'
 
 export default function Layout() {
-  const { i18n, t } = useTranslation()
+  const { i18n } = useTranslation()
   const location = useLocation()
 
-  const toggleLanguage = () => {
-    i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')
-  }
-
-  const isActive = (path: string) => {
-    const currentPath = location.pathname.replace(/^#/, '')
-    return currentPath === path || (path === '/' && currentPath === '')
-  }
+  const isActive = (path: string) =>
+    location.pathname === path || (path === '/cities' && location.pathname === '/')
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.logo}>
-            <h1>{t('header.title')}</h1>
-            <p className={styles.subtitle}>{t('header.subtitle')}</p>
-          </div>
-          <button
-            className={styles.languageButton}
-            onClick={toggleLanguage}
-            aria-label={t('header.language')}
-          >
-            {i18n.language.toUpperCase()}
-          </button>
-        </div>
-        <nav className={styles.topNav}>
-          <Link
-            to="/cities"
-            className={`${styles.navLink} ${
-              isActive('/cities') ? styles.active : ''
-            }`}
-          >
-            {t('nav.cities')}
-          </Link>
-          <Link
-            to="/players"
-            className={`${styles.navLink} ${
-              isActive('/players') ? styles.active : ''
-            }`}
-          >
-            {t('nav.players')}
-          </Link>
-          <Link
-            to="/leaderboard"
-            className={`${styles.navLink} ${
-              isActive('/leaderboard') ? styles.active : ''
-            }`}
-          >
-            {t('nav.leaderboard')}
-          </Link>
+    <div className={styles.root}>
+      <header className={styles.appbar}>
+        <Link to="/cities" className={styles.brand}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="13" cy="4" r="2" />
+            <path d="M6 21l3-6 4 2 2 4M9 15l-1-5 5-2 3 4 3 1" />
+          </svg>
+          CITY CHALLENGE
+        </Link>
+
+        <nav className={styles.tabs}>
+          <Link to="/cities"      className={`${styles.tab} ${isActive('/cities')      ? styles.active : ''}`}>Stages</Link>
+          <Link to="/leaderboard" className={`${styles.tab} ${isActive('/leaderboard') ? styles.active : ''}`}>Leaderboard</Link>
+          <Link to="/players"     className={`${styles.tab} ${isActive('/players')     ? styles.active : ''}`}>Players</Link>
+          <Link to="/a-propos"    className={`${styles.tab} ${isActive('/a-propos')    ? styles.active : ''}`}>About</Link>
         </nav>
+
+        <span className={styles.spacer} />
+
+        <button
+          className={styles.langBtn}
+          onClick={() => i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr')}
+          aria-label="Toggle language"
+        >
+          {i18n.language.toUpperCase()}
+        </button>
       </header>
 
       <main className={styles.main}>
@@ -64,10 +43,14 @@ export default function Layout() {
       </main>
 
       <footer className={styles.footer}>
-        <p>
-          City Challenge © 2026 troissix |{' '}
-          <Link to="/a-propos">{t('nav.about')}</Link>
-        </p>
+        <div className={styles.footInner}>
+          <span>CITY CHALLENGE · © 2026 troissix</span>
+          <span>
+            <Link to="/a-propos">About</Link>
+            {' · '}
+            <Link to="/health">Health</Link>
+          </span>
+        </div>
       </footer>
     </div>
   )

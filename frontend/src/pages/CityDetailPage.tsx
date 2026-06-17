@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { City, PathData, StatsData } from '@/types'
 import { getCity, getCityEditions, getCityPath, getCityStats } from '@/lib/data'
 import LeaderboardTable from '@/components/LeaderboardTable'
-import CityMap from '@/components/CityMap'
+import ConquerMap from '@/components/ConquerMap'
+import RoutePanel from '@/components/RoutePanel'
 import { getFlagEmoji } from '@/lib/flags'
 import styles from './CityDetailPage.module.css'
 
@@ -18,6 +19,8 @@ export default function CityDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [comment, setComment] = useState('')
+  const [activeStep, setActiveStep] = useState(0)
+  const [focusCoordinate, setFocusCoordinate] = useState<[number, number] | undefined>()
 
   useEffect(() => {
     if (!id) return
@@ -96,30 +99,79 @@ export default function CityDetailPage() {
         </p>
       </div>
 
-      {pathData && <CityMap pathData={pathData} />}
-
-      <section className={styles.section}>
-        <h2>{t('cities.leaderboardTitle', { cityName: city.name })}</h2>
-        {stats && stats.leaderboard.length > 0 ? (
-          <LeaderboardTable data={stats.leaderboard} />
-        ) : (
-          <p>{t('common.noData')}</p>
+      <div className={styles.statusStrip}>
+        <div className={styles.statusItem}>
+          <span className={styles.statusLabel}>{t('cities.streets')}</span>
+          <span className={styles.statusValue}>{city.streetCount}</span>
+        </div>
+        <div className={styles.statusItem}>
+          <span className={styles.statusLabel}>{t('cities.kilometers')}</span>
+          <span className={styles.statusValue}>{(city.totalMeters / 1000).toFixed(1)}</span>
+        </div>
+        {stats && (
+          <>
+            <div className={styles.statusItem}>
+              <span className={styles.statusLabel}>{t('cities.attempts')}</span>
+              <span className={styles.statusValue}>{stats.totalAttempts}</span>
+            </div>
+            <div className={styles.statusItem}>
+              <span className={styles.statusLabel}>{t('cities.completed')}</span>
+              <span className={styles.statusValue}>{stats.totalCompleted}</span>
+            </div>
+          </>
         )}
+      </div>
+
+      {pathData && (
+        <div className={styles.mapRow}>
+          <div className={`${styles.mapCol} panel`}>
+            <ConquerMap
+              pathData={pathData}
+              highlightGeometry={pathData.routeSteps[activeStep]?.geometry}
+              focusCoordinate={focusCoordinate}
+            />
+          </div>
+          {pathData.routeSteps.length > 0 && (
+            <div className={styles.panelCol}>
+              <RoutePanel
+                steps={pathData.routeSteps}
+                activeIndex={activeStep}
+                onStepSelect={(i) => {
+                  setActiveStep(i)
+                  setFocusCoordinate([...pathData.routeSteps[i].coordinate])
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <section className={`${styles.section} panel`}>
+        <div className="phead">{t('cities.leaderboardTitle', { cityName: city.name })}</div>
+        <div className={styles.sectionBody}>
+          {stats && stats.leaderboard.length > 0 ? (
+            <LeaderboardTable data={stats.leaderboard} />
+          ) : (
+            <p>{t('common.noData')}</p>
+          )}
+        </div>
       </section>
 
-      <section className={styles.section}>
-        <h2>{t('cities.comments')}</h2>
-        <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
-          <textarea
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder={t('cities.commentPlaceholder')}
-            rows={4}
-          />
-          <button type="submit" disabled={!comment.trim()}>
-            {t('cities.competitionButton')}
-          </button>
-        </form>
+      <section className={`${styles.section} panel`}>
+        <div className="phead">{t('cities.comments')}</div>
+        <div className={styles.sectionBody}>
+          <form onSubmit={handleCommentSubmit} className={styles.commentForm}>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t('cities.commentPlaceholder')}
+              rows={4}
+            />
+            <button type="submit" disabled={!comment.trim()}>
+              {t('cities.competitionButton')}
+            </button>
+          </form>
+        </div>
       </section>
     </div>
   )

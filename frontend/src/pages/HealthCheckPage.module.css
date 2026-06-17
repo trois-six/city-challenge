@@ -4,35 +4,45 @@
   width: 100%;
 }
 
+.container h1 {
+  font-family: var(--display);
+  font-size: 22px;
+  color: var(--amber);
+  text-shadow: 0 0 14px rgba(255, 178, 61, .35);
+}
+
 .statusOk,
 .statusError {
   padding: 1.5rem;
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 2rem;
+  border: 1px solid var(--line);
   border-left: 4px solid;
 }
 
 .statusOk {
-  background: #e6ffe6;
-  border-left-color: #00cc00;
+  background: rgba(51, 224, 122, 0.06);
+  border-left-color: var(--green);
 }
 
 .statusError {
-  background: #ffe6e6;
-  border-left-color: #cc0000;
+  background: rgba(255, 74, 60, 0.06);
+  border-left-color: var(--red);
 }
 
 .statusOk h2,
 .statusError h2 {
   margin: 0 0 0.5rem;
+  font-family: var(--display);
+  font-size: 1.3rem;
 }
 
 .checks {
-  background: white;
-  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .checkList {
@@ -46,28 +56,14 @@
   display: flex;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: 0.5rem;
 }
 
 .checkOk {
-  background: #f0f0f0;
+  background: rgba(51, 224, 122, 0.06);
 }
 
 .checkError {
-  background: #fff0f0;
-}
-
-.refreshButton {
-  padding: 0.6rem 1.5rem;
-  background: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.refreshButton:hover {
-  background: #0052a3;
+  background: rgba(255, 74, 60, 0.06);
 }

@@ -95,6 +95,10 @@ const pathFixture: PathData = {
   streetGeometries: [
     [[48.8566, 2.3522], [48.86, 2.35]],
   ],
+  routeSteps: [
+    { instruction: 'start', streetName: 'Rue de Rivoli', distanceM: 245, coordinate: [48.8566, 2.3522], geometry: [[48.8566, 2.3522], [48.86, 2.35]] },
+    { instruction: 'arrive', streetName: '', distanceM: 0, coordinate: [48.86, 2.35], geometry: [] },
+  ],
   totalDistance: 27.356,
   streetCount: 42,
 }

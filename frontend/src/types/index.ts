@@ -60,6 +60,26 @@ export interface LeaderboardEntry {
   totalDistance: number
 }
 
+export type TurnInstruction =
+  | 'start'
+  | 'straight'
+  | 'slight_left'
+  | 'slight_right'
+  | 'turn_left'
+  | 'turn_right'
+  | 'sharp_left'
+  | 'sharp_right'
+  | 'uturn'
+  | 'arrive'
+
+export interface RouteStep {
+  instruction: TurnInstruction
+  streetName: string
+  distanceM: number
+  coordinate: [number, number]
+  geometry: [number, number][]
+}
+
 export interface PathData {
   id: string
   cityId: string
@@ -67,6 +87,8 @@ export interface PathData {
   coordinates: [number, number][]
   /** Each unique street geometry once, for map rendering. */
   streetGeometries: [number, number][][]
+  /** Turn-by-turn navigation steps. */
+  routeSteps: RouteStep[]
   totalDistance: number
   streetCount: number
 }

@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Build stage
 FROM node:26-alpine AS builder
 
@@ -6,8 +8,12 @@ WORKDIR /app
 # Copy package files
 COPY frontend/package.json frontend/package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies. The npm cache mount persists downloaded tarballs
+# across builds (including CI runs, via the gha cache backend in
+# docker.yml), so a partial package-lock.json change only re-fetches the
+# packages that actually changed instead of the whole tree.
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci
 
 # Copy source
 COPY frontend ./

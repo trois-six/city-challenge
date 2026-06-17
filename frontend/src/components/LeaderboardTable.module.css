@@ -3,47 +3,15 @@
   overflow-x: auto;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-}
-
-thead {
-  background-color: #f5f5f5;
-}
-
-th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid #ddd;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.2s;
-}
-
-th:hover {
-  background-color: #e8e8e8;
-}
-
-td {
-  padding: 1rem;
-  border-bottom: 1px solid #eee;
-}
-
-tbody tr:hover {
-  background-color: #f9f9f9;
-}
-
 .rank {
-  font-weight: 600;
-  color: #0066cc;
-  width: 80px;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--amber);
+  width: 70px;
 }
 
-.player {
-  font-weight: 500;
+.player a:hover {
+  color: var(--green);
 }
 
 .distance {
@@ -53,7 +21,7 @@ tbody tr:hover {
 
 .completed {
   text-align: center;
-  color: #00aa44;
+  color: var(--green);
   font-weight: bold;
 }
 

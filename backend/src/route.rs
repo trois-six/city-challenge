@@ -49,6 +49,10 @@ enum NodeKey {
 pub struct RouteResult {
     pub coordinates: Vec<(f64, f64)>,
     pub total_distance_km: f64,
+    /// Ordered sequence of street segment visits produced by the solver.
+    /// Each entry is `(segment_index, reversed)` where `segment_index` is
+    /// an index into the `streets` slice passed to `optimize_route`.
+    pub segment_visits: Vec<(usize, bool)>,
 }
 
 #[derive(Clone)]
@@ -64,6 +68,7 @@ pub fn optimize_route(streets: &[StreetSegment]) -> RouteResult {
         return RouteResult {
             coordinates: Vec::new(),
             total_distance_km: 0.0,
+            segment_visits: Vec::new(),
         };
     }
 
@@ -79,6 +84,7 @@ pub fn optimize_route(streets: &[StreetSegment]) -> RouteResult {
 
     let mut coordinates: Vec<(f64, f64)> = Vec::new();
     let mut total_distance_km = 0.0;
+    let mut segment_visits: Vec<(usize, bool)> = Vec::new();
 
     for component_edges in components {
         let (circuit, component_distance) =
@@ -100,12 +106,14 @@ pub fn optimize_route(streets: &[StreetSegment]) -> RouteResult {
             } else {
                 coordinates.extend(street.nodes.iter().copied());
             }
+            segment_visits.push((street_index, reversed));
         }
     }
 
     RouteResult {
         coordinates,
         total_distance_km,
+        segment_visits,
     }
 }
 

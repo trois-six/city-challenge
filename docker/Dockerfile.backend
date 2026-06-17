@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # ── Stage 1: base image with system deps + cargo-chef ────────────────────────
 # This layer is rebuilt only when the Rust version or system packages change.
 FROM rust:1.96-alpine AS chef
@@ -24,18 +26,30 @@ COPY backend/.cargo ./.cargo
 # the correct directory instead of falling back to the default /app/target.
 ENV CARGO_TARGET_DIR=/app/output
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+# Cache mounts persist the crates.io registry/git checkouts and the compiled
+# dependency artifacts across builds (including across CI runs, since the
+# gha cache backend in docker.yml exports/imports cache-mount content too).
+# Their content is NOT committed into the image layer, so the final binary
+# is `cp`'d out to a non-cached path before each RUN ends.
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=/app/output,sharing=locked \
+    cargo chef cook --release --recipe-path recipe.json
 
 # Compile the application binary (fast — deps are already built above).
 COPY backend/Cargo.toml backend/Cargo.lock ./
 COPY backend/src ./src
-RUN cargo build --release --bin server
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    --mount=type=cache,target=/app/output,sharing=locked \
+    cargo build --release --bin server && \
+    cp /app/output/release/server /app/server
 
 # ── Stage 4: minimal runtime image ───────────────────────────────────────────
 FROM alpine:latest
 WORKDIR /app
 RUN apk add --no-cache ca-certificates
-COPY --from=builder /app/output/release/server ./server
+COPY --from=builder /app/server ./server
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:8080/api/health || exit 1

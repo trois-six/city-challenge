@@ -1,159 +1,133 @@
-.container {
+.root {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100%;
 }
 
-.header {
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
-  padding: 0;
-}
-
-.headerContent {
+/* ── App bar ─────────────────────────────── */
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
+  gap: 18px;
+  padding: 12px 22px;
+  background: rgba(10, 12, 18, .94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
 }
 
-.logo {
-  flex: 1;
-}
-
-.logo h1 {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #0066cc;
-}
-
-.subtitle {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.languageButton {
-  background-color: #f0f0f0;
-  color: #333;
-  border: 1px solid #ddd;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-
-.languageButton:hover {
-  background-color: #e0e0e0;
-}
-
-.topNav {
+.brand {
   display: flex;
-  justify-content: center;
-  gap: 0;
-  border-top: 1px solid #ddd;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--amber);
+  text-shadow: 0 0 12px rgba(255, 178, 61, .5);
+  white-space: nowrap;
+  text-decoration: none;
 }
 
-.navLink {
+.brand svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: 10px;
+}
+
+.tab {
+  font-family: var(--pixel);
+  font-size: 9px;
+  color: var(--muted);
+  padding: 9px 12px;
+  border-radius: 5px;
+  transition: color .2s, background .2s;
+  text-decoration: none;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: var(--raise);
+}
+
+.tab.active {
+  color: var(--amber);
+  background: rgba(255, 178, 61, .08);
+}
+
+.spacer {
   flex: 1;
-  padding: 1rem;
-  text-align: center;
-  border-right: 1px solid #ddd;
-  color: #0066cc;
-  font-weight: 500;
-  transition: background-color 0.2s;
-  text-decoration: none;
 }
 
-.navLink:last-child {
-  border-right: none;
+.langBtn {
+  font-family: var(--pixel);
+  font-size: 9px;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 8px 12px;
+  border-radius: 6px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
 }
 
-.navLink:hover {
-  background-color: #f5f5f5;
-  text-decoration: none;
+.langBtn:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: var(--raise);
+  filter: none;
 }
 
-.navLink.active {
-  background-color: #e6f0ff;
-  border-bottom: 3px solid #0066cc;
-  color: #0066cc;
-}
-
+/* ── Main ─────────────────────────────────── */
 .main {
   flex: 1;
   overflow-y: auto;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 1340px;
   width: 100%;
-  padding: 2rem 1rem;
+  margin: 0 auto;
+  padding: 20px 22px 60px;
 }
 
+/* ── Footer ───────────────────────────────── */
 .footer {
-  background-color: #f5f5f5;
-  border-top: 1px solid #ddd;
-  padding: 1rem;
-  text-align: center;
-  font-size: 0.9rem;
-  color: #666;
+  border-top: 1px solid var(--line-soft);
+  flex-shrink: 0;
 }
 
-.footer a {
-  color: #0066cc;
+.footInner {
+  max-width: 1340px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 22px;
+  font-family: var(--pixel);
+  font-size: 8px;
+  color: var(--muted-2);
+}
+
+.footInner a {
+  color: var(--muted);
   text-decoration: none;
 }
 
-.footer a:hover {
-  text-decoration: underline;
+.footInner a:hover {
+  color: var(--amber);
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .headerContent {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .logo h1 {
-    font-size: 1.4rem;
-  }
-
-  .subtitle {
-    font-size: 0.8rem;
-  }
-
-  .languageButton {
-    align-self: flex-start;
-  }
-
-  .topNav {
-    flex-direction: column;
-    border-top: 1px solid #ddd;
-  }
-
-  .navLink {
-    flex: none;
-    border-right: none;
-    border-bottom: 1px solid #ddd;
-    padding: 0.75rem;
-  }
-
-  .navLink.active {
-    border-bottom: 3px solid #0066cc;
-  }
-
-  .main {
-    padding: 1rem 0.5rem;
-    margin: 0;
-    width: 100%;
-  }
-
-  .footer {
-    font-size: 0.8rem;
-    padding: 0.75rem;
-  }
+/* ── Responsive ───────────────────────────── */
+@media (max-width: 720px) {
+  .tabs { display: none; }
+  .appbar { gap: 12px; padding: 10px 14px; }
+  .main { padding: 16px 14px 50px; }
 }

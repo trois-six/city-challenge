@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import styles from './Layout.module.css'
 
 export default function Layout() {
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const location = useLocation()
 
   const isActive = (path: string) =>
@@ -21,10 +21,10 @@ export default function Layout() {
         </Link>
 
         <nav className={styles.tabs}>
-          <Link to="/cities"      className={`${styles.tab} ${isActive('/cities')      ? styles.active : ''}`}>Stages</Link>
-          <Link to="/leaderboard" className={`${styles.tab} ${isActive('/leaderboard') ? styles.active : ''}`}>Leaderboard</Link>
-          <Link to="/players"     className={`${styles.tab} ${isActive('/players')     ? styles.active : ''}`}>Players</Link>
-          <Link to="/a-propos"    className={`${styles.tab} ${isActive('/a-propos')    ? styles.active : ''}`}>About</Link>
+          <Link to="/cities"      className={`${styles.tab} ${isActive('/cities')      ? styles.active : ''}`}>{t('cities.title')}</Link>
+          <Link to="/leaderboard" className={`${styles.tab} ${isActive('/leaderboard') ? styles.active : ''}`}>{t('leaderboard.title')}</Link>
+          <Link to="/players"     className={`${styles.tab} ${isActive('/players')     ? styles.active : ''}`}>{t('players.title')}</Link>
+          <Link to="/about"       className={`${styles.tab} ${isActive('/about')       ? styles.active : ''}`}>{t('about.title')}</Link>
         </nav>
 
         <span className={styles.spacer} />
@@ -46,9 +46,9 @@ export default function Layout() {
         <div className={styles.footInner}>
           <span>CITY CHALLENGE · © 2026 troissix</span>
           <span>
-            <Link to="/a-propos">About</Link>
+            <Link to="/about">{t('About')}</Link>
             {' · '}
-            <Link to="/health">Health</Link>
+            <Link to="/health">{t('Health')}</Link>
           </span>
         </div>
       </footer>

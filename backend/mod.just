@@ -32,3 +32,17 @@ deps-check:
 
 run:
     cargo run --bin server
+
+# --- Town data ---------------------------------------------------------------
+
+# Build/update one or more towns (or every town in cities.json if IDS is
+# empty). Add a town by adding an entry to cities.json first, then run this
+# with its id.
+city-build IDS="":
+    cargo run --release --bin build-data -- {{IDS}}
+
+# Delete a town's generated data. The town's entry must still be in
+# cities.json when running this. Afterwards remove the entry and run
+# `just backend::city-build` to refresh the global manifests.
+city-delete ID:
+    cargo run --release --bin build-data -- --delete {{ID}}

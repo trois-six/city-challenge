@@ -1,229 +1,42 @@
 [
   {
-    "id": "player-bob",
-    "name": "Bob Dupont",
-    "country": "BEL",
-    "totalDistance": 235.18,
-    "citiesCompleted": 0,
-    "achievements": [],
-    "results": [
-      {
-        "playerId": "player-bob",
-        "playerName": "Bob Dupont",
-        "country": "BEL",
-        "cityId": "FR-75001-Paris",
-        "distance": 92.74,
-        "completed": false,
-        "rank": 3,
-        "time": 26657
-      },
-      {
-        "playerId": "player-bob",
-        "playerName": "Bob Dupont",
-        "country": "BEL",
-        "cityId": "FR-69001-Lyon",
-        "distance": 107.81,
-        "completed": false,
-        "rank": 6,
-        "time": 42952
-      },
-      {
-        "playerId": "player-bob",
-        "playerName": "Bob Dupont",
-        "country": "BEL",
-        "cityId": "FR-74290-Talloires",
-        "distance": 34.63,
-        "completed": false,
-        "rank": 6,
-        "time": 10101
-      }
-    ]
-  },
-  {
-    "id": "player-elena",
-    "name": "Elena Rossi",
-    "country": "ITA",
-    "totalDistance": 277.02,
-    "citiesCompleted": 2,
-    "achievements": [
-      {
-        "type": "all_streets",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "all_streets",
-        "cityId": "FR-74290-Talloires",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "first_city",
-        "cityId": "FR-74290-Talloires",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "fastest",
-        "cityId": "FR-74290-Talloires",
-        "date": "2026-06-16"
-      }
-    ],
-    "results": [
-      {
-        "playerId": "player-elena",
-        "playerName": "Elena Rossi",
-        "country": "ITA",
-        "cityId": "FR-75001-Paris",
-        "distance": 83.09,
-        "completed": false,
-        "rank": 4,
-        "time": 34363
-      },
-      {
-        "playerId": "player-elena",
-        "playerName": "Elena Rossi",
-        "country": "ITA",
-        "cityId": "FR-69001-Lyon",
-        "distance": 134.21,
-        "completed": true,
-        "rank": 2,
-        "time": 62885
-      },
-      {
-        "playerId": "player-elena",
-        "playerName": "Elena Rossi",
-        "country": "ITA",
-        "cityId": "FR-74290-Talloires",
-        "distance": 59.72,
-        "completed": true,
-        "rank": 1,
-        "time": 24542
-      }
-    ]
-  },
-  {
-    "id": "player-dana",
-    "name": "Dana Müller",
-    "country": "DEU",
-    "totalDistance": 150.77,
-    "citiesCompleted": 0,
-    "achievements": [],
-    "results": [
-      {
-        "playerId": "player-dana",
-        "playerName": "Dana Müller",
-        "country": "DEU",
-        "cityId": "FR-69001-Lyon",
-        "distance": 103.89,
-        "completed": false,
-        "rank": 7,
-        "time": 37795
-      },
-      {
-        "playerId": "player-dana",
-        "playerName": "Dana Müller",
-        "country": "DEU",
-        "cityId": "FR-74290-Talloires",
-        "distance": 46.88,
-        "completed": false,
-        "rank": 3,
-        "time": 15327
-      }
-    ]
-  },
-  {
-    "id": "player-gus",
-    "name": "Gus Johnson",
-    "country": "USA",
-    "totalDistance": 309.7,
-    "citiesCompleted": 2,
-    "achievements": [
-      {
-        "type": "all_streets",
-        "cityId": "FR-75001-Paris",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "first_city",
-        "cityId": "FR-75001-Paris",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "fastest",
-        "cityId": "FR-75001-Paris",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "all_streets",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
-      }
-    ],
-    "results": [
-      {
-        "playerId": "player-gus",
-        "playerName": "Gus Johnson",
-        "country": "USA",
-        "cityId": "FR-75001-Paris",
-        "distance": 128.26,
-        "completed": true,
-        "rank": 1,
-        "time": 52695
-      },
-      {
-        "playerId": "player-gus",
-        "playerName": "Gus Johnson",
-        "country": "USA",
-        "cityId": "FR-69001-Lyon",
-        "distance": 129.83,
-        "completed": true,
-        "rank": 3,
-        "time": 48363
-      },
-      {
-        "playerId": "player-gus",
-        "playerName": "Gus Johnson",
-        "country": "USA",
-        "cityId": "FR-74290-Talloires",
-        "distance": 51.61,
-        "completed": false,
-        "rank": 2,
-        "time": 21347
-      }
-    ]
-  },
-  {
-    "id": "player-alice",
-    "name": "Alice Martin",
-    "country": "FRA",
-    "totalDistance": 134.21,
+    "id": "player-fatima",
+    "name": "Fatima Garcia",
+    "country": "ESP",
+    "totalDistance": 173.77,
     "citiesCompleted": 1,
     "achievements": [
       {
         "type": "all_streets",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
+        "cityId": "FR-75001-Paris",
+        "date": "2026-06-17"
       },
       {
         "type": "first_city",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
-      },
-      {
-        "type": "fastest",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
+        "cityId": "FR-75001-Paris",
+        "date": "2026-06-17"
       }
     ],
     "results": [
       {
-        "playerId": "player-alice",
-        "playerName": "Alice Martin",
-        "country": "FRA",
-        "cityId": "FR-69001-Lyon",
-        "distance": 134.21,
+        "playerId": "player-fatima",
+        "playerName": "Fatima Garcia",
+        "country": "ESP",
+        "cityId": "FR-75001-Paris",
+        "distance": 134.7,
         "completed": true,
         "rank": 1,
-        "time": 41153
+        "time": 64169
+      },
+      {
+        "playerId": "player-fatima",
+        "playerName": "Fatima Garcia",
+        "country": "ESP",
+        "cityId": "FR-74290-Talloires",
+        "distance": 39.07,
+        "completed": false,
+        "rank": 6,
+        "time": 11753
       }
     ]
   },
@@ -231,13 +44,18 @@
     "id": "player-hana",
     "name": "Hana Visser",
     "country": "NLD",
-    "totalDistance": 237.76,
+    "totalDistance": 250.72,
     "citiesCompleted": 1,
     "achievements": [
       {
         "type": "all_streets",
-        "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
+        "cityId": "FR-75001-Paris",
+        "date": "2026-06-17"
+      },
+      {
+        "type": "fastest",
+        "cityId": "FR-75001-Paris",
+        "date": "2026-06-17"
       }
     ],
     "results": [
@@ -246,30 +64,30 @@
         "playerName": "Hana Visser",
         "country": "NLD",
         "cityId": "FR-75001-Paris",
-        "distance": 78.21,
-        "completed": false,
-        "rank": 5,
-        "time": 25439
+        "distance": 124.07,
+        "completed": true,
+        "rank": 2,
+        "time": 40143
       },
       {
         "playerId": "player-hana",
         "playerName": "Hana Visser",
         "country": "NLD",
         "cityId": "FR-69001-Lyon",
-        "distance": 123.63,
-        "completed": true,
+        "distance": 85.33,
+        "completed": false,
         "rank": 5,
-        "time": 58434
+        "time": 30170
       },
       {
         "playerId": "player-hana",
         "playerName": "Hana Visser",
         "country": "NLD",
         "cityId": "FR-74290-Talloires",
-        "distance": 35.92,
+        "distance": 41.32,
         "completed": false,
         "rank": 5,
-        "time": 13015
+        "time": 13501
       }
     ]
   },
@@ -277,75 +95,221 @@
     "id": "player-charlie",
     "name": "Charlie Smith",
     "country": "GBR",
-    "totalDistance": 129.79,
+    "totalDistance": 239.97,
     "citiesCompleted": 0,
-    "achievements": [],
-    "results": [
-      {
-        "playerId": "player-charlie",
-        "playerName": "Charlie Smith",
-        "country": "GBR",
-        "cityId": "FR-69001-Lyon",
-        "distance": 84.05,
-        "completed": false,
-        "rank": 8,
-        "time": 34075
-      },
-      {
-        "playerId": "player-charlie",
-        "playerName": "Charlie Smith",
-        "country": "GBR",
-        "cityId": "FR-74290-Talloires",
-        "distance": 45.74,
-        "completed": false,
-        "rank": 4,
-        "time": 14784
-      }
-    ]
-  },
-  {
-    "id": "player-fatima",
-    "name": "Fatima Garcia",
-    "country": "ESP",
-    "totalDistance": 273.74,
-    "citiesCompleted": 1,
     "achievements": [
       {
-        "type": "all_streets",
+        "type": "first_city",
         "cityId": "FR-69001-Lyon",
-        "date": "2026-06-16"
+        "date": "2026-06-17"
       }
     ],
     "results": [
       {
-        "playerId": "player-fatima",
-        "playerName": "Fatima Garcia",
-        "country": "ESP",
+        "playerId": "player-charlie",
+        "playerName": "Charlie Smith",
+        "country": "GBR",
         "cityId": "FR-75001-Paris",
-        "distance": 115.61,
+        "distance": 82.97,
         "completed": false,
-        "rank": 2,
-        "time": 39790
+        "rank": 6,
+        "time": 35115
       },
       {
-        "playerId": "player-fatima",
-        "playerName": "Fatima Garcia",
-        "country": "ESP",
+        "playerId": "player-charlie",
+        "playerName": "Charlie Smith",
+        "country": "GBR",
         "cityId": "FR-69001-Lyon",
-        "distance": 124.16,
-        "completed": true,
-        "rank": 4,
-        "time": 42572
+        "distance": 106.9,
+        "completed": false,
+        "rank": 1,
+        "time": 35671
       },
       {
-        "playerId": "player-fatima",
-        "playerName": "Fatima Garcia",
-        "country": "ESP",
+        "playerId": "player-charlie",
+        "playerName": "Charlie Smith",
+        "country": "GBR",
         "cityId": "FR-74290-Talloires",
-        "distance": 33.97,
+        "distance": 50.1,
+        "completed": false,
+        "rank": 3,
+        "time": 23357
+      }
+    ]
+  },
+  {
+    "id": "player-elena",
+    "name": "Elena Rossi",
+    "country": "ITA",
+    "totalDistance": 229.67,
+    "citiesCompleted": 0,
+    "achievements": [],
+    "results": [
+      {
+        "playerId": "player-elena",
+        "playerName": "Elena Rossi",
+        "country": "ITA",
+        "cityId": "FR-75001-Paris",
+        "distance": 94.73,
+        "completed": false,
+        "rank": 4,
+        "time": 35460
+      },
+      {
+        "playerId": "player-elena",
+        "playerName": "Elena Rossi",
+        "country": "ITA",
+        "cityId": "FR-69001-Lyon",
+        "distance": 96.99,
+        "completed": false,
+        "rank": 3,
+        "time": 32535
+      },
+      {
+        "playerId": "player-elena",
+        "playerName": "Elena Rossi",
+        "country": "ITA",
+        "cityId": "FR-74290-Talloires",
+        "distance": 37.95,
         "completed": false,
         "rank": 7,
-        "time": 12329
+        "time": 17650
+      }
+    ]
+  },
+  {
+    "id": "player-alice",
+    "name": "Alice Martin",
+    "country": "FRA",
+    "totalDistance": 226.73,
+    "citiesCompleted": 1,
+    "achievements": [
+      {
+        "type": "all_streets",
+        "cityId": "FR-74290-Talloires",
+        "date": "2026-06-17"
+      },
+      {
+        "type": "first_city",
+        "cityId": "FR-74290-Talloires",
+        "date": "2026-06-17"
+      },
+      {
+        "type": "fastest",
+        "cityId": "FR-74290-Talloires",
+        "date": "2026-06-17"
+      }
+    ],
+    "results": [
+      {
+        "playerId": "player-alice",
+        "playerName": "Alice Martin",
+        "country": "FRA",
+        "cityId": "FR-75001-Paris",
+        "distance": 81.42,
+        "completed": false,
+        "rank": 7,
+        "time": 28503
+      },
+      {
+        "playerId": "player-alice",
+        "playerName": "Alice Martin",
+        "country": "FRA",
+        "cityId": "FR-69001-Lyon",
+        "distance": 84.46,
+        "completed": false,
+        "rank": 6,
+        "time": 25181
+      },
+      {
+        "playerId": "player-alice",
+        "playerName": "Alice Martin",
+        "country": "FRA",
+        "cityId": "FR-74290-Talloires",
+        "distance": 60.85,
+        "completed": true,
+        "rank": 1,
+        "time": 26407
+      }
+    ]
+  },
+  {
+    "id": "player-gus",
+    "name": "Gus Johnson",
+    "country": "USA",
+    "totalDistance": 259.5,
+    "citiesCompleted": 0,
+    "achievements": [],
+    "results": [
+      {
+        "playerId": "player-gus",
+        "playerName": "Gus Johnson",
+        "country": "USA",
+        "cityId": "FR-75001-Paris",
+        "distance": 114.59,
+        "completed": false,
+        "rank": 3,
+        "time": 43678
+      },
+      {
+        "playerId": "player-gus",
+        "playerName": "Gus Johnson",
+        "country": "USA",
+        "cityId": "FR-69001-Lyon",
+        "distance": 102.23,
+        "completed": false,
+        "rank": 2,
+        "time": 40239
+      },
+      {
+        "playerId": "player-gus",
+        "playerName": "Gus Johnson",
+        "country": "USA",
+        "cityId": "FR-74290-Talloires",
+        "distance": 42.68,
+        "completed": false,
+        "rank": 4,
+        "time": 12153
+      }
+    ]
+  },
+  {
+    "id": "player-bob",
+    "name": "Bob Dupont",
+    "country": "BEL",
+    "totalDistance": 234.55,
+    "citiesCompleted": 0,
+    "achievements": [],
+    "results": [
+      {
+        "playerId": "player-bob",
+        "playerName": "Bob Dupont",
+        "country": "BEL",
+        "cityId": "FR-75001-Paris",
+        "distance": 92.92,
+        "completed": false,
+        "rank": 5,
+        "time": 34712
+      },
+      {
+        "playerId": "player-bob",
+        "playerName": "Bob Dupont",
+        "country": "BEL",
+        "cityId": "FR-69001-Lyon",
+        "distance": 91.35,
+        "completed": false,
+        "rank": 4,
+        "time": 37141
+      },
+      {
+        "playerId": "player-bob",
+        "playerName": "Bob Dupont",
+        "country": "BEL",
+        "cityId": "FR-74290-Talloires",
+        "distance": 50.28,
+        "completed": false,
+        "rank": 2,
+        "time": 17894
       }
     ]
   }

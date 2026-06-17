@@ -42,7 +42,7 @@ const router = createHashRouter([
         element: <HealthCheckPage />,
       },
       {
-        path: '/a-propos',
+        path: '/about',
         element: <AboutPage />,
       },
     ],

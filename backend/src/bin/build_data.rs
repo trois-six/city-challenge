@@ -11,8 +11,18 @@
 //!
 //! Run from the `backend/` directory:
 //!   cargo run --release --bin build-data [--allow-synthetic] [CITY_ID ...]
+//!
+//! To add or update a town: add/edit its entry in `cities.json` (next to
+//! this crate's `Cargo.toml`), then run the command above with that town's
+//! id (or with no id to rebuild everything).
+//!
+//! To delete a town: with its entry still in `cities.json`, run
+//!   cargo run --release --bin build-data -- --delete CITY_ID
+//! to remove its generated manifest directory and cached raw fetches, then
+//! remove its entry from `cities.json` and rebuild with no id to refresh the
+//! global manifests (cities.json / players.json / leaderboard.json).
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Utc;
 use city_challenge_backend::route;
 use city_challenge_backend::scoring::{
@@ -26,59 +36,32 @@ use std::path::{Path, PathBuf};
 
 const OVERPASS_API_URL: &str = "https://overpass-api.de/api/interpreter";
 
-/// Registry of cities to process. Pass one or more ids as CLI arguments to
-/// restrict the build to a subset, e.g.:
+/// One entry of the city registry, loaded from `cities.json`. Pass one or
+/// more ids as CLI arguments to restrict the build to a subset, e.g.:
 ///   cargo run --release --bin build-data -- FR-75001-Paris
+#[derive(Debug, Clone, Deserialize)]
 struct CityConfig {
     /// `{PAYS}-{CODE_POSTAL}-{VILLE}`
-    id: &'static str,
+    id: String,
     /// ISO 3166-1 alpha-3 country code
-    country: &'static str,
-    region: &'static str,
-    department: &'static str,
-    postal_code: &'static str,
-    name: &'static str,
+    country: String,
+    region: String,
+    department: String,
+    postal_code: String,
+    name: String,
     lat: f64,
     lng: f64,
     /// half-width of the bounding box, in degrees
     bbox: f64,
 }
 
-const CITY_REGISTRY: &[CityConfig] = &[
-    CityConfig {
-        id: "FR-75001-Paris",
-        country: "FRA",
-        region: "Île-de-France",
-        department: "75",
-        postal_code: "75001",
-        name: "Paris",
-        lat: 48.8606,
-        lng: 2.3376,
-        bbox: 0.006,
-    },
-    CityConfig {
-        id: "FR-69001-Lyon",
-        country: "FRA",
-        region: "Auvergne-Rhône-Alpes",
-        department: "69",
-        postal_code: "69001",
-        name: "Lyon",
-        lat: 45.7679,
-        lng: 4.833,
-        bbox: 0.006,
-    },
-    CityConfig {
-        id: "FR-74290-Talloires",
-        country: "FRA",
-        region: "Auvergne-Rhône-Alpes",
-        department: "74",
-        postal_code: "74290",
-        name: "Talloires",
-        lat: 45.8333,
-        lng: 6.2167,
-        bbox: 0.012,
-    },
-];
+/// Load the city registry from `cities.json`, next to this crate's `Cargo.toml`.
+fn load_city_registry(path: &Path) -> Result<Vec<CityConfig>> {
+    let json = fs::read_to_string(path)
+        .with_context(|| format!("failed to read city registry at {}", path.display()))?;
+    serde_json::from_str(&json)
+        .with_context(|| format!("failed to parse city registry at {}", path.display()))
+}
 
 /// Fixed roster of synthetic players used to seed leaderboard data.
 /// Deterministic, seeded random results are generated for each player on
@@ -706,14 +689,17 @@ struct StatsFile {
 }
 
 struct Paths {
+    cities_registry: PathBuf,
     data_raw: PathBuf,
     public_data: PathBuf,
 }
 
 impl Paths {
     fn new() -> Self {
-        let frontend_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../frontend");
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let frontend_dir = manifest_dir.join("../frontend");
         Paths {
+            cities_registry: manifest_dir.join("cities.json"),
             data_raw: frontend_dir.join("data-raw"),
             public_data: frontend_dir.join("public/data"),
         }
@@ -722,9 +708,9 @@ impl Paths {
 
 fn city_dir(city: &CityConfig) -> PathBuf {
     PathBuf::from(&city.country[..2])
-        .join(city.department)
-        .join(city.postal_code)
-        .join(city.name)
+        .join(&city.department)
+        .join(&city.postal_code)
+        .join(&city.name)
 }
 
 fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
@@ -797,7 +783,7 @@ fn process_city(
     )?;
 
     // Stats data: leaderboard + aggregated metrics for this edition.
-    let leaderboard = generate_player_results(&edition_id, city.id, total_distance_km);
+    let leaderboard = generate_player_results(&edition_id, &city.id, total_distance_km);
     let total_completed = leaderboard.iter().filter(|r| r.completed).count() as i64;
     write_json(
         &absolute_dir
@@ -1054,20 +1040,85 @@ fn build_global_manifests(
     Ok(())
 }
 
+/// Remove a town's generated manifest directory and cached raw Overpass
+/// fetches. The town must still have an entry in `cities.json` (its
+/// country/department/postal_code/name are needed to resolve the directory)
+/// — remove the entry afterwards and rebuild with no id to refresh the
+/// global manifests.
+fn delete_city(city_id: &str) -> Result<()> {
+    let paths = Paths::new();
+    let city_registry = load_city_registry(&paths.cities_registry)?;
+
+    let Some(city) = city_registry.iter().find(|c| c.id == city_id) else {
+        eprintln!(
+            "Error: {city_id} is not in {}",
+            paths.cities_registry.display()
+        );
+        eprintln!(
+            "Available ids: {}",
+            city_registry
+                .iter()
+                .map(|c| c.id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        std::process::exit(1);
+    };
+
+    let dir = paths.public_data.join(city_dir(city));
+    if dir.exists() {
+        fs::remove_dir_all(&dir)?;
+        println!("Removed {}", dir.display());
+    } else {
+        println!("{} does not exist, nothing to remove", dir.display());
+    }
+
+    if paths.data_raw.exists() {
+        let prefix = format!("{city_id}-");
+        for entry in fs::read_dir(&paths.data_raw)? {
+            let entry = entry?;
+            if entry.file_name().to_string_lossy().starts_with(&prefix) {
+                fs::remove_file(entry.path())?;
+                println!("Removed {}", entry.path().display());
+            }
+        }
+    }
+
+    println!(
+        "\nDone. Now remove the `{city_id}` entry from {}, then run \
+         `just backend::city-build` to refresh the global manifests.",
+        paths.cities_registry.display()
+    );
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
+
+    if let Some(pos) = args.iter().position(|a| a == "--delete") {
+        let Some(city_id) = args.get(pos + 1) else {
+            eprintln!("Usage: build-data --delete CITY_ID");
+            std::process::exit(1);
+        };
+        return delete_city(city_id);
+    }
+
     // `--allow-synthetic` opts in to the deterministic fake street grid when
     // Overpass is unreachable (e.g. offline CI). By default a fetch failure is
     // a hard error rather than silently producing grid data.
     let allow_synthetic = args.iter().any(|a| a == "--allow-synthetic");
     let requested_ids: Vec<String> = args.into_iter().filter(|a| !a.starts_with("--")).collect();
+
+    let paths = Paths::new();
+    let city_registry = load_city_registry(&paths.cities_registry)?;
+
     let cities: Vec<&CityConfig> = if requested_ids.is_empty() {
-        CITY_REGISTRY.iter().collect()
+        city_registry.iter().collect()
     } else {
-        CITY_REGISTRY
+        city_registry
             .iter()
-            .filter(|c| requested_ids.iter().any(|id| id == c.id))
+            .filter(|c| requested_ids.iter().any(|id| id.as_str() == c.id))
             .collect()
     };
 
@@ -1075,9 +1126,9 @@ async fn main() -> Result<()> {
         eprintln!("No matching cities for: {}", requested_ids.join(", "));
         eprintln!(
             "Available ids: {}",
-            CITY_REGISTRY
+            city_registry
                 .iter()
-                .map(|c| c.id)
+                .map(|c| c.id.as_str())
                 .collect::<Vec<_>>()
                 .join(", ")
         );
@@ -1086,7 +1137,6 @@ async fn main() -> Result<()> {
 
     println!("Starting data build for {} city/cities...", cities.len());
 
-    let paths = Paths::new();
     // Overpass mirrors reject requests without a User-Agent with HTTP 406, so
     // an explicit UA is mandatory — without it every fetch fails and the build
     // silently falls back to the synthetic grid.
@@ -1134,7 +1184,7 @@ async fn main() -> Result<()> {
     // Re-build global manifests from the full registry so unaffected cities
     // keep their data even when building a subset.
     let mut all_processed: Vec<(&CityConfig, EditionSummary, String)> = Vec::new();
-    for city in CITY_REGISTRY {
+    for city in &city_registry {
         let dir = city_dir(city);
         let index_path = paths.public_data.join(&dir).join("index.json");
         if !index_path.exists() {

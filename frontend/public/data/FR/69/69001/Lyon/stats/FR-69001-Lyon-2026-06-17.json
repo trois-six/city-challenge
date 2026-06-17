@@ -1,0 +1,72 @@
+{
+  "cityId": "FR-69001-Lyon",
+  "editionId": "FR-69001-Lyon-2026-06-17",
+  "date": "2026-06-17",
+  "streetCount": 3413,
+  "totalMeters": 124269,
+  "totalDistance": 124.269,
+  "totalAttempts": 6,
+  "totalCompleted": 0,
+  "leaderboard": [
+    {
+      "playerId": "player-charlie",
+      "playerName": "Charlie Smith",
+      "country": "GBR",
+      "cityId": "FR-69001-Lyon",
+      "distance": 106.9,
+      "completed": false,
+      "rank": 1,
+      "time": 35671
+    },
+    {
+      "playerId": "player-gus",
+      "playerName": "Gus Johnson",
+      "country": "USA",
+      "cityId": "FR-69001-Lyon",
+      "distance": 102.23,
+      "completed": false,
+      "rank": 2,
+      "time": 40239
+    },
+    {
+      "playerId": "player-elena",
+      "playerName": "Elena Rossi",
+      "country": "ITA",
+      "cityId": "FR-69001-Lyon",
+      "distance": 96.99,
+      "completed": false,
+      "rank": 3,
+      "time": 32535
+    },
+    {
+      "playerId": "player-bob",
+      "playerName": "Bob Dupont",
+      "country": "BEL",
+      "cityId": "FR-69001-Lyon",
+      "distance": 91.35,
+      "completed": false,
+      "rank": 4,
+      "time": 37141
+    },
+    {
+      "playerId": "player-hana",
+      "playerName": "Hana Visser",
+      "country": "NLD",
+      "cityId": "FR-69001-Lyon",
+      "distance": 85.33,
+      "completed": false,
+      "rank": 5,
+      "time": 30170
+    },
+    {
+      "playerId": "player-alice",
+      "playerName": "Alice Martin",
+      "country": "FRA",
+      "cityId": "FR-69001-Lyon",
+      "distance": 84.46,
+      "completed": false,
+      "rank": 6,
+      "time": 25181
+    }
+  ]
+}

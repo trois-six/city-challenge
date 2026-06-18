@@ -1,6 +1,30 @@
 [
   {
     "rank": 1,
+    "playerId": "player-fatima",
+    "playerName": "Fatima Garcia",
+    "country": "ESP",
+    "citiesCompleted": 2,
+    "totalDistance": 402.809
+  },
+  {
+    "rank": 2,
+    "playerId": "player-dana",
+    "playerName": "Dana Müller",
+    "country": "DEU",
+    "citiesCompleted": 1,
+    "totalDistance": 278.088
+  },
+  {
+    "rank": 3,
+    "playerId": "player-elena",
+    "playerName": "Elena Rossi",
+    "country": "ITA",
+    "citiesCompleted": 1,
+    "totalDistance": 278.088
+  },
+  {
+    "rank": 4,
     "playerId": "player-hana",
     "playerName": "Hana Visser",
     "country": "NLD",
@@ -8,7 +32,7 @@
     "totalDistance": 124.721
   },
   {
-    "rank": 2,
+    "rank": 5,
     "playerId": "player-alice",
     "playerName": "Alice Martin",
     "country": "FRA",
@@ -16,34 +40,10 @@
     "totalDistance": 56.344
   },
   {
-    "rank": 3,
-    "playerId": "player-fatima",
-    "playerName": "Fatima Garcia",
-    "country": "ESP",
-    "citiesCompleted": 1,
-    "totalDistance": 124.721
-  },
-  {
-    "rank": 4,
+    "rank": 6,
     "playerId": "player-charlie",
     "playerName": "Charlie Smith",
     "country": "GBR",
-    "citiesCompleted": 0,
-    "totalDistance": 0.0
-  },
-  {
-    "rank": 5,
-    "playerId": "player-elena",
-    "playerName": "Elena Rossi",
-    "country": "ITA",
-    "citiesCompleted": 0,
-    "totalDistance": 0.0
-  },
-  {
-    "rank": 6,
-    "playerId": "player-gus",
-    "playerName": "Gus Johnson",
-    "country": "USA",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   },
@@ -52,6 +52,14 @@
     "playerId": "player-bob",
     "playerName": "Bob Dupont",
     "country": "BEL",
+    "citiesCompleted": 0,
+    "totalDistance": 0.0
+  },
+  {
+    "rank": 8,
+    "playerId": "player-gus",
+    "playerName": "Gus Johnson",
+    "country": "USA",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   }

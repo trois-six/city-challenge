@@ -46,9 +46,9 @@ export default function Layout() {
         <div className={styles.footInner}>
           <span>CITY CHALLENGE · © 2026 troissix</span>
           <span>
-            <Link to="/about">{t('About')}</Link>
+            <Link to="/about">{t('about.title')}</Link>
             {' · '}
-            <Link to="/health">{t('Health')}</Link>
+            <Link to="/health">{t('health.title')}</Link>
           </span>
         </div>
       </footer>

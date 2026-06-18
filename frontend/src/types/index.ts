@@ -78,6 +78,8 @@ export interface RouteStep {
   distanceM: number
   coordinate: [number, number]
   geometry: [number, number][]
+  /** Reverse-geocoded address, only set for the "start"/"arrive" steps. */
+  address?: string
 }
 
 export interface PathData {

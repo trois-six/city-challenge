@@ -74,7 +74,7 @@ const resources = {
         lastUpdate: 'Dernière mise à jour',
       },
       health: {
-        title: 'État du frontend',
+        title: 'État du service',
         healthy: 'Opérationnel',
         unhealthy: 'Dégradé',
         timestamp: 'Horodatage',
@@ -192,7 +192,7 @@ const resources = {
         lastUpdate: 'Last Updated',
       },
       health: {
-        title: 'Frontend health',
+        title: 'Service health',
         healthy: 'Healthy',
         unhealthy: 'Unhealthy',
         timestamp: 'Timestamp',

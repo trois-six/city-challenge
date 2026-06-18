@@ -1,0 +1,82 @@
+{
+  "cityId": "FR-33560-Sainte-Eulalie",
+  "editionId": "FR-33560-Sainte-Eulalie-2026-06-18",
+  "date": "2026-06-18",
+  "streetCount": 2329,
+  "totalMeters": 278088,
+  "totalDistance": 278.088,
+  "totalAttempts": 7,
+  "totalCompleted": 3,
+  "leaderboard": [
+    {
+      "playerId": "player-dana",
+      "playerName": "Dana Müller",
+      "country": "DEU",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 291.44,
+      "completed": true,
+      "rank": 1,
+      "time": 122848
+    },
+    {
+      "playerId": "player-elena",
+      "playerName": "Elena Rossi",
+      "country": "ITA",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 291.16,
+      "completed": true,
+      "rank": 2,
+      "time": 135762
+    },
+    {
+      "playerId": "player-fatima",
+      "playerName": "Fatima Garcia",
+      "country": "ESP",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 289.12,
+      "completed": true,
+      "rank": 3,
+      "time": 87403
+    },
+    {
+      "playerId": "player-charlie",
+      "playerName": "Charlie Smith",
+      "country": "GBR",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 245.77,
+      "completed": false,
+      "rank": 4,
+      "time": 115004
+    },
+    {
+      "playerId": "player-bob",
+      "playerName": "Bob Dupont",
+      "country": "BEL",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 212.26,
+      "completed": false,
+      "rank": 5,
+      "time": 64677
+    },
+    {
+      "playerId": "player-hana",
+      "playerName": "Hana Visser",
+      "country": "NLD",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 206.57,
+      "completed": false,
+      "rank": 6,
+      "time": 68685
+    },
+    {
+      "playerId": "player-gus",
+      "playerName": "Gus Johnson",
+      "country": "USA",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 170.0,
+      "completed": false,
+      "rank": 7,
+      "time": 53218
+    }
+  ]
+}

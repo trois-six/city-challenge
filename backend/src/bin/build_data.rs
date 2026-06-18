@@ -35,6 +35,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const OVERPASS_API_URL: &str = "https://overpass-api.de/api/interpreter";
+const NOMINATIM_REVERSE_URL: &str = "https://nominatim.openstreetmap.org/reverse";
+/// Nominatim's usage policy caps anonymous traffic at 1 request/second.
+const NOMINATIM_MIN_INTERVAL: std::time::Duration = std::time::Duration::from_millis(1100);
 
 /// One entry of the city registry, loaded from `cities.json`. Pass one or
 /// more ids as CLI arguments to restrict the build to a subset, e.g.:
@@ -196,10 +199,136 @@ struct OverpassNode {
     lon: f64,
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct NominatimAddress {
+    road: Option<String>,
+    pedestrian: Option<String>,
+    footway: Option<String>,
+    cycleway: Option<String>,
+    path: Option<String>,
+    house_number: Option<String>,
+    postcode: Option<String>,
+    city: Option<String>,
+    town: Option<String>,
+    village: Option<String>,
+    municipality: Option<String>,
+}
+
+impl NominatimAddress {
+    /// The street/way name, whatever its OSM highway subtype.
+    fn road_name(&self) -> Option<&str> {
+        self.road
+            .as_deref()
+            .or(self.pedestrian.as_deref())
+            .or(self.footway.as_deref())
+            .or(self.cycleway.as_deref())
+            .or(self.path.as_deref())
+    }
+
+    fn locality(&self) -> Option<&str> {
+        self.city
+            .as_deref()
+            .or(self.town.as_deref())
+            .or(self.village.as_deref())
+            .or(self.municipality.as_deref())
+    }
+
+    /// Best-effort human-readable address, e.g. "12 Rue de la Paix, 75001 Paris".
+    fn format(&self, display_name: Option<&str>) -> Option<String> {
+        let street = self
+            .house_number
+            .as_deref()
+            .zip(self.road_name())
+            .map(|(number, road)| format!("{number} {road}"))
+            .or_else(|| self.road_name().map(str::to_string));
+
+        let parts: Vec<String> = [
+            street,
+            self.postcode.clone(),
+            self.locality().map(str::to_string),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+
+        if parts.is_empty() {
+            display_name.map(str::to_string)
+        } else {
+            Some(parts.join(", "))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct NominatimResponse {
+    #[serde(default)]
+    address: NominatimAddress,
+    display_name: Option<String>,
+}
+
+/// Rate-limited Nominatim reverse-geocoding client. Nominatim's usage policy
+/// caps anonymous traffic at 1 request/second, so every call goes through
+/// `throttle` first; calls are sequential by construction (this is `&mut
+/// self`), so a single last-call timestamp is enough.
+struct Geocoder<'a> {
+    client: &'a reqwest::Client,
+    last_call: Option<std::time::Instant>,
+}
+
+impl<'a> Geocoder<'a> {
+    fn new(client: &'a reqwest::Client) -> Self {
+        Self {
+            client,
+            last_call: None,
+        }
+    }
+
+    async fn throttle(&mut self) {
+        if let Some(last) = self.last_call {
+            let elapsed = last.elapsed();
+            if elapsed < NOMINATIM_MIN_INTERVAL {
+                tokio::time::sleep(NOMINATIM_MIN_INTERVAL - elapsed).await;
+            }
+        }
+        self.last_call = Some(std::time::Instant::now());
+    }
+
+    /// Reverse-geocode a point. Returns `None` on any failure (network,
+    /// non-2xx, malformed body) so a flaky Nominatim response never blocks
+    /// the rest of the build.
+    async fn reverse(&mut self, lat: f64, lng: f64) -> Option<NominatimResponse> {
+        self.throttle().await;
+        self.client
+            .get(NOMINATIM_REVERSE_URL)
+            .query(&[
+                ("format", "jsonv2"),
+                ("lat", lat.to_string().as_str()),
+                ("lon", lng.to_string().as_str()),
+                ("zoom", "18"),
+                ("addressdetails", "1"),
+            ])
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?
+            .json::<NominatimResponse>()
+            .await
+            .ok()
+    }
+
+    /// Reverse-geocode a point into a formatted address string.
+    async fn reverse_address(&mut self, lat: f64, lng: f64) -> Option<String> {
+        let response = self.reverse(lat, lng).await?;
+        response.address.format(response.display_name.as_deref())
+    }
+}
+
 /// Fetch streets data from Overpass API for a bounding box around a point.
 async fn fetch_streets_from_overpass(
     client: &reqwest::Client,
     city: &CityConfig,
+    geocoder: &mut Geocoder<'_>,
 ) -> Result<Vec<StreetData>> {
     let CityConfig { lat, lng, bbox, .. } = *city;
     let query = format!(
@@ -263,10 +392,22 @@ async fn fetch_streets_from_overpass(
                     geometry.iter().map(|node| (node.lat, node.lon)).collect();
                 if nodes.len() >= 2 {
                     let length = calculate_distance(&nodes);
-                    let name = element
-                        .tags
-                        .and_then(|tags| tags.name)
-                        .unwrap_or_else(|| format!("Street {}", element.id));
+                    let name = match element.tags.and_then(|tags| tags.name) {
+                        Some(name) => name,
+                        // No `name` tag (common for unnamed footways/service
+                        // roads): ask Nominatim for the road name at this
+                        // way's midpoint instead of exposing the raw OSM id.
+                        None => {
+                            let (mid_lat, mid_lng) = nodes[nodes.len() / 2];
+                            geocoder
+                                .reverse(mid_lat, mid_lng)
+                                .await
+                                .and_then(|response| {
+                                    response.address.road_name().map(str::to_string)
+                                })
+                                .unwrap_or_else(|| format!("Street {}", element.id))
+                        }
+                    };
                     // Keep node ids only when they align 1:1 with the geometry.
                     let node_ids = element
                         .nodes
@@ -438,6 +579,9 @@ struct RouteStepData {
     coordinate: (f64, f64),
     /// Full polyline geometry of this step (all node coordinates in order of travel).
     geometry: Vec<(f64, f64)>,
+    /// Reverse-geocoded address, only set for the "start"/"arrive" steps.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    address: Option<String>,
 }
 
 fn seg_coords(nodes: &[(f64, f64)], reversed: bool) -> Vec<(f64, f64)> {
@@ -480,6 +624,7 @@ fn build_route_steps(
                 distance_m: group_distance.round(),
                 coordinate: group_coord,
                 geometry: std::mem::take(&mut group_geometry),
+                address: None,
             });
             let entry = segment_entry_bearing(&seg.nodes, reversed);
             instruction = match (prev_exit, entry) {
@@ -510,6 +655,7 @@ fn build_route_steps(
         distance_m: group_distance.round(),
         coordinate: group_coord,
         geometry: group_geometry,
+        address: None,
     });
 
     // Final "arrive" marker at the last coordinate visited.
@@ -526,12 +672,26 @@ fn build_route_steps(
         distance_m: 0.0,
         coordinate: arrive,
         geometry: Vec::new(),
+        address: None,
     });
 
     steps
 }
 
 /// Compute the optimised route and build turn-by-turn navigation steps.
+/// Reverse-geocode the route's first ("start") and last ("arrive") steps so
+/// the panel can show the exact address instead of just "Départ"/"Arrivée".
+async fn fill_endpoint_addresses(geocoder: &mut Geocoder<'_>, steps: &mut [RouteStepData]) {
+    if let Some(first) = steps.first_mut() {
+        let (lat, lng) = first.coordinate;
+        first.address = geocoder.reverse_address(lat, lng).await;
+    }
+    if let Some(last) = steps.last_mut() {
+        let (lat, lng) = last.coordinate;
+        last.address = geocoder.reverse_address(lat, lng).await;
+    }
+}
+
 fn optimize_and_plan_route(streets: &[StreetData]) -> (route::RouteResult, Vec<RouteStepData>) {
     let (segments, segment_to_street) = split_into_segments(streets);
     let result = route::optimize_route(&segments);
@@ -746,10 +906,11 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 
 /// Process a single city: fetch streets, write path/stats files, and return
 /// a summary used for the city index and the global manifest.
-fn process_city(
+async fn process_city(
     city: &CityConfig,
     streets: Vec<StreetData>,
     paths: &Paths,
+    geocoder: &mut Geocoder<'_>,
 ) -> Result<(EditionSummary, String)> {
     let relative_dir = city_dir(city);
     let absolute_dir = paths.public_data.join(&relative_dir);
@@ -791,7 +952,8 @@ fn process_city(
     // Path data: the optimized route covering every street (may exceed the
     // network's total length when dead ends or disconnected streets force
     // backtracking/transfers).
-    let (route, route_steps) = optimize_and_plan_route(&streets);
+    let (route, mut route_steps) = optimize_and_plan_route(&streets);
+    fill_endpoint_addresses(geocoder, &mut route_steps).await;
     write_json(
         &absolute_dir
             .join("paths")
@@ -1173,11 +1335,12 @@ async fn main() -> Result<()> {
         ))
         .build()?;
     let mut processed: Vec<(&CityConfig, EditionSummary, String)> = Vec::new();
+    let mut geocoder = Geocoder::new(&client);
 
     for city in &cities {
         println!("\nProcessing {} ({})...", city.name, city.postal_code);
 
-        let streets = match fetch_streets_from_overpass(&client, city).await {
+        let streets = match fetch_streets_from_overpass(&client, city, &mut geocoder).await {
             Ok(streets) if !streets.is_empty() => {
                 println!("  fetched {} streets from Overpass", streets.len());
                 streets
@@ -1200,7 +1363,7 @@ async fn main() -> Result<()> {
             }
         };
 
-        match process_city(city, streets, &paths) {
+        match process_city(city, streets, &paths, &mut geocoder).await {
             Ok((edition, dir)) => processed.push((city, edition, dir)),
             Err(error) => eprintln!("Error processing {}: {error}", city.name),
         }

@@ -19,7 +19,7 @@ export default function CityDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [comment, setComment] = useState('')
-  const [activeStep, setActiveStep] = useState(0)
+  const [activeStep, setActiveStep] = useState<number | null>(null)
   const [focusCoordinate, setFocusCoordinate] = useState<[number, number] | undefined>()
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function CityDetailPage() {
           <div className={`${styles.mapCol} panel`}>
             <ConquerMap
               pathData={pathData}
-              highlightGeometry={pathData.routeSteps[activeStep]?.geometry}
+              highlightGeometry={activeStep !== null ? pathData.routeSteps[activeStep]?.geometry : undefined}
               focusCoordinate={focusCoordinate}
             />
           </div>
@@ -137,8 +137,13 @@ export default function CityDetailPage() {
                 steps={pathData.routeSteps}
                 activeIndex={activeStep}
                 onStepSelect={(i) => {
-                  setActiveStep(i)
-                  setFocusCoordinate([...pathData.routeSteps[i].coordinate])
+                  if (activeStep === i) {
+                    setActiveStep(null)
+                    setFocusCoordinate(undefined)
+                  } else {
+                    setActiveStep(i)
+                    setFocusCoordinate([...pathData.routeSteps[i].coordinate])
+                  }
                 }}
               />
             </div>

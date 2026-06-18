@@ -14,7 +14,7 @@ sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls", "postgres"]
 log = "0.4"
 env_logger = "0.11"
 actix-cors = "0.7"
-reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "query", "rustls"] }
 anyhow = "1"
 
 [dev-dependencies]

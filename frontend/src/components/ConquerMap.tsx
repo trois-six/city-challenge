@@ -16,8 +16,8 @@ interface Bounds {
   maxLng: number
 }
 
-const LOOP_SECONDS = 45
-const FADE_SECONDS = 1.8
+const RUNNER_SPEED_MPS = 500
+const TRAIL_STEPS = 3
 
 export default function ConquerMap({ pathData, highlightGeometry, focusCoordinate }: ConquerMapProps) {
   const { t } = useTranslation()
@@ -25,10 +25,9 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pctRef = useRef<HTMLSpanElement>(null)
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const trailCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
   const rafRef = useRef<number | null>(null)
-  const stateRef = useRef({ headPos: 0, lastTs: 0, fading: false, fadeStart: 0 })
+  const stateRef = useRef({ headPos: 0, lastTs: 0 })
   const highlightRef = useRef(highlightGeometry)
   const focusRef = useRef(focusCoordinate)
 
@@ -136,67 +135,49 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
       canvas!.width = w
       canvas!.height = h
       baseCanvasRef.current = buildBase(w, h)
-      const trail = document.createElement('canvas')
-      trail.width = w
-      trail.height = h
-      trailCanvasRef.current = trail
       stateRef.current.headPos = 0
-      stateRef.current.fading = false
     }
 
     resize()
     const ro = new ResizeObserver(resize)
     ro.observe(screen)
 
-    function addTrail(from: number, to: number) {
-      const trail = trailCanvasRef.current
-      if (!trail) return
-      const { w, h } = sizeRef.current
-      const tctx = trail.getContext('2d')!
+    const total = pathData.coordinates.length - 1
+    const metersPerIndex = total > 0 ? (pathData.totalDistance * 1000) / total : 0
+    const speed = metersPerIndex > 0 ? RUNNER_SPEED_MPS / metersPerIndex : 0
+    const avgStepLen = pathData.routeSteps.length > 1 ? total / (pathData.routeSteps.length - 1) : total
+    const trailLength = Math.max(1, avgStepLen * TRAIL_STEPS)
+
+    function drawTrail(w: number, h: number) {
+      const headPos = stateRef.current.headPos
+      const from = Math.max(0, headPos - trailLength)
+      if (headPos - from < 0.001) return
 
       const points: [number, number][] = [pointAt(from, w, h)]
       let idx = Math.floor(from) + 1
-      while (idx < to) {
+      while (idx < headPos) {
         points.push(projectIndexed(idx, w, h))
         idx++
       }
-      points.push(pointAt(to, w, h))
+      points.push(pointAt(headPos, w, h))
 
-      tctx.lineCap = 'round'
-      tctx.lineJoin = 'round'
-
-      tctx.globalCompositeOperation = 'lighter'
-      tctx.strokeStyle = 'rgba(51, 224, 122, 0.35)'
-      tctx.lineWidth = 6
-      tctx.beginPath()
-      points.forEach(([x, y], i) => (i === 0 ? tctx.moveTo(x, y) : tctx.lineTo(x, y)))
-      tctx.stroke()
-
-      tctx.globalCompositeOperation = 'source-over'
-      tctx.strokeStyle = '#7BFFB0'
-      tctx.lineWidth = 2
-      tctx.beginPath()
-      points.forEach(([x, y], i) => (i === 0 ? tctx.moveTo(x, y) : tctx.lineTo(x, y)))
-      tctx.stroke()
+      ctx!.save()
+      ctx!.strokeStyle = '#FFB23D'
+      ctx!.shadowColor = '#FFB23D'
+      ctx!.shadowBlur = 10
+      ctx!.lineWidth = 4
+      ctx!.lineCap = 'round'
+      ctx!.lineJoin = 'round'
+      ctx!.beginPath()
+      points.forEach(([x, y], i) => (i === 0 ? ctx!.moveTo(x, y) : ctx!.lineTo(x, y)))
+      ctx!.stroke()
+      ctx!.restore()
     }
 
     function drawFrame() {
       const { w, h } = sizeRef.current
       ctx!.clearRect(0, 0, w, h)
       if (baseCanvasRef.current) ctx!.drawImage(baseCanvasRef.current, 0, 0)
-      if (trailCanvasRef.current) ctx!.drawImage(trailCanvasRef.current, 0, 0)
-
-      if (!highlightRef.current) {
-        const [hx, hy] = pointAt(stateRef.current.headPos, w, h)
-        ctx!.save()
-        ctx!.shadowColor = '#33E07A'
-        ctx!.shadowBlur = 14
-        ctx!.fillStyle = '#F0FFF4'
-        ctx!.beginPath()
-        ctx!.arc(hx, hy, 5, 0, Math.PI * 2)
-        ctx!.fill()
-        ctx!.restore()
-      }
 
       if (highlightRef.current && highlightRef.current.length > 1) {
         ctx!.save()
@@ -214,6 +195,18 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
         })
         ctx!.stroke()
         ctx!.restore()
+      } else {
+        drawTrail(w, h)
+
+        const [hx, hy] = pointAt(stateRef.current.headPos, w, h)
+        ctx!.save()
+        ctx!.shadowColor = '#FFB23D'
+        ctx!.shadowBlur = 14
+        ctx!.fillStyle = '#FFF3D9'
+        ctx!.beginPath()
+        ctx!.arc(hx, hy, 5, 0, Math.PI * 2)
+        ctx!.fill()
+        ctx!.restore()
       }
 
       if (focusRef.current) {
@@ -229,14 +222,10 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
       }
 
       if (pctRef.current) {
-        const total = pathData.coordinates.length - 1
         const pct = total > 0 ? Math.min(100, Math.round((stateRef.current.headPos / total) * 100)) : 100
         pctRef.current.textContent = `${pct}% CLEARED`
       }
     }
-
-    const total = pathData.coordinates.length - 1
-    const speed = total / LOOP_SECONDS
 
     function tick(ts: number) {
       const st = stateRef.current
@@ -245,27 +234,8 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
       st.lastTs = ts
 
       if (!highlightRef.current) {
-        if (st.fading) {
-          const { w, h } = sizeRef.current
-          const fctx = trailCanvasRef.current?.getContext('2d')
-          if (fctx) {
-            fctx.fillStyle = 'rgba(7, 11, 18, 0.08)'
-            fctx.fillRect(0, 0, w, h)
-          }
-          if (ts - st.fadeStart > FADE_SECONDS * 1000) {
-            trailCanvasRef.current?.getContext('2d')?.clearRect(0, 0, w, h)
-            st.fading = false
-            st.headPos = 0
-          }
-        } else {
-          const prev = st.headPos
-          st.headPos = Math.min(total, st.headPos + speed * dt)
-          if (st.headPos > prev) addTrail(prev, st.headPos)
-          if (st.headPos >= total) {
-            st.fading = true
-            st.fadeStart = ts
-          }
-        }
+        st.headPos += speed * dt
+        if (st.headPos >= total) st.headPos = 0
       }
 
       drawFrame()
@@ -274,7 +244,6 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
 
     if (reduceMotion) {
       stateRef.current.headPos = total
-      if (total > 0) addTrail(0, total)
       drawFrame()
     } else {
       rafRef.current = requestAnimationFrame(tick)
@@ -283,7 +252,7 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
     return () => {
       ro.disconnect()
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      stateRef.current = { headPos: 0, lastTs: 0, fading: false, fadeStart: 0 }
+      stateRef.current = { headPos: 0, lastTs: 0 }
     }
   }, [pathData])
 
@@ -295,7 +264,7 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
       <span ref={pctRef} className={styles.pct}>0% CLEARED</span>
       <div className={styles.legend}>
         <span className={styles.legendItem}>
-          <span className={styles.swatch} style={{ background: '#33E07A' }} />
+          <span className={styles.swatch} style={{ background: '#FFB23D' }} />
           {t('map.covered')}
         </span>
         <span className={styles.legendItem}>

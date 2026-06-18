@@ -25,7 +25,7 @@ function formatDistance(meters: number): string {
 
 interface RoutePanelProps {
   steps: RouteStep[]
-  activeIndex: number
+  activeIndex: number | null
   onStepSelect: (index: number) => void
 }
 
@@ -65,6 +65,7 @@ export default function RoutePanel({ steps, activeIndex, onStepSelect }: RoutePa
             </span>
             <span className={styles.text}>
               <span className={styles.instruction}>{instructionLabel(step)}</span>
+              {step.address && <span className={styles.address}>{step.address}</span>}
               {step.distanceM > 0 && (
                 <span className={styles.distance}>{formatDistance(step.distanceM)}</span>
               )}

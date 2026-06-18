@@ -1,5 +1,9 @@
 # Recipes run with the frontend directory as working directory.
 
+# List available recipes
+default:
+    @just --list frontend
+
 # Install dependencies (matches package-lock.json exactly).
 # Skips npm ci when node_modules is already up-to-date so that recipes
 # depending on this step are fast when nothing has changed.

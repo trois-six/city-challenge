@@ -1,5 +1,9 @@
 # Recipes run with the backend directory as working directory.
 
+# List available recipes
+default:
+    @just --list backend
+
 build:
     cargo build --release
 

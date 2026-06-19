@@ -30,6 +30,7 @@ use city_challenge_backend::scoring::{
     rank_entries, AchievementType, HasPoints,
 };
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -186,6 +187,10 @@ struct OverpassElement {
     /// the query uses `out body geom`.
     #[serde(default)]
     nodes: Option<Vec<i64>>,
+    /// Member ways (with their own inlined geometry, since the query uses
+    /// `out geom`), present only for `type: "relation"` elements.
+    #[serde(default)]
+    members: Option<Vec<OverpassMember>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -197,6 +202,15 @@ struct OverpassTags {
 struct OverpassNode {
     lat: f64,
     lon: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct OverpassMember {
+    #[serde(rename = "type")]
+    kind: String,
+    role: String,
+    #[serde(default)]
+    geometry: Option<Vec<OverpassNode>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -266,21 +280,49 @@ struct NominatimResponse {
     display_name: Option<String>,
 }
 
-/// Rate-limited Nominatim reverse-geocoding client. Nominatim's usage policy
-/// caps anonymous traffic at 1 request/second, so every call goes through
-/// `throttle` first; calls are sequential by construction (this is `&mut
-/// self`), so a single last-call timestamp is enough.
+/// Cached result of a reverse-geocode lookup at a given point, persisted to
+/// disk so re-running the build never re-queries the same coordinate twice.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct GeocodeCacheEntry {
+    road: Option<String>,
+    address: Option<String>,
+}
+
+/// Rate-limited, disk-cached Nominatim reverse-geocoding client. Nominatim's
+/// usage policy caps anonymous traffic at 1 request/second, so every network
+/// call goes through `throttle` first; calls are sequential by construction
+/// (this is `&mut self`), so a single last-call timestamp is enough.
+///
+/// Lookups are cached by coordinate (rounded to ~1m) across the whole build
+/// (all cities) and persisted to `cache_path` via `save`, so re-running
+/// `build-data` for the same city/town never pays for the same point twice.
 struct Geocoder<'a> {
     client: &'a reqwest::Client,
     last_call: Option<std::time::Instant>,
+    cache_path: PathBuf,
+    cache: HashMap<String, GeocodeCacheEntry>,
+    dirty: bool,
 }
 
 impl<'a> Geocoder<'a> {
-    fn new(client: &'a reqwest::Client) -> Self {
+    fn new(client: &'a reqwest::Client, cache_path: PathBuf) -> Self {
+        let cache = fs::read_to_string(&cache_path)
+            .ok()
+            .and_then(|json| serde_json::from_str(&json).ok())
+            .unwrap_or_default();
         Self {
             client,
             last_call: None,
+            cache_path,
+            cache,
+            dirty: false,
         }
+    }
+
+    /// Rounds to ~1m precision so nearby points (e.g. two ways' midpoints a
+    /// few centimeters apart) share a cache entry.
+    fn cache_key(lat: f64, lng: f64) -> String {
+        format!("{lat:.5},{lng:.5}")
     }
 
     async fn throttle(&mut self) {
@@ -296,7 +338,7 @@ impl<'a> Geocoder<'a> {
     /// Reverse-geocode a point. Returns `None` on any failure (network,
     /// non-2xx, malformed body) so a flaky Nominatim response never blocks
     /// the rest of the build.
-    async fn reverse(&mut self, lat: f64, lng: f64) -> Option<NominatimResponse> {
+    async fn fetch(&mut self, lat: f64, lng: f64) -> Option<NominatimResponse> {
         self.throttle().await;
         self.client
             .get(NOMINATIM_REVERSE_URL)
@@ -317,45 +359,121 @@ impl<'a> Geocoder<'a> {
             .ok()
     }
 
+    /// Reverse-geocode a point, hitting the on-disk cache first. A single
+    /// network call (when uncached) resolves both the road name and the
+    /// formatted address at once, since both are derived from the same
+    /// Nominatim response.
+    async fn lookup(&mut self, lat: f64, lng: f64) -> GeocodeCacheEntry {
+        let key = Self::cache_key(lat, lng);
+        if let Some(entry) = self.cache.get(&key) {
+            return entry.clone();
+        }
+
+        let response = self.fetch(lat, lng).await;
+        let entry = GeocodeCacheEntry {
+            road: response
+                .as_ref()
+                .and_then(|r| r.address.road_name().map(str::to_string)),
+            address: response
+                .as_ref()
+                .and_then(|r| r.address.format(r.display_name.as_deref())),
+        };
+        self.cache.insert(key, entry.clone());
+        self.dirty = true;
+        entry
+    }
+
+    /// Reverse-geocode a point's road name, for naming unnamed OSM ways.
+    async fn road_name(&mut self, lat: f64, lng: f64) -> Option<String> {
+        self.lookup(lat, lng).await.road
+    }
+
     /// Reverse-geocode a point into a formatted address string.
     async fn reverse_address(&mut self, lat: f64, lng: f64) -> Option<String> {
-        let response = self.reverse(lat, lng).await?;
-        response.address.format(response.display_name.as_deref())
+        self.lookup(lat, lng).await.address
+    }
+
+    /// Persists the cache to disk. Cheap no-op if nothing changed.
+    fn save(&mut self) -> Result<()> {
+        if !self.dirty {
+            return Ok(());
+        }
+        if let Some(parent) = self.cache_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&self.cache_path, serde_json::to_string_pretty(&self.cache)?)?;
+        self.dirty = false;
+        Ok(())
     }
 }
 
-/// Fetch streets data from Overpass API for a bounding box around a point.
-async fn fetch_streets_from_overpass(
+/// A commune's administrative boundary, as one or more closed outer rings
+/// (lat, lng), used to clip fetched streets so the route never wanders into
+/// a neighboring commune.
+struct Boundary {
+    rings: Vec<Vec<(f64, f64)>>,
+}
+
+/// Fetch a city's administrative boundary polygon (OSM `boundary=administrative`)
+/// from Overpass. Matches both `admin_level=8` (the commune level in France)
+/// and `admin_level=9` (arrondissements, used by Paris/Lyon/Marseille), since
+/// a `cities.json` entry like "Paris" (postal code 75001) means the 1st
+/// arrondissement, not the whole city.
+///
+/// Tries a narrow query first (name substring + exact postal code match,
+/// e.g. matches "Paris 1er Arrondissement" by its `postal_code=75001` tag
+/// without ever fetching the whole city's geometry). Many relations (e.g.
+/// Lyon's arrondissements) carry no `postal_code` tag at all, so when the
+/// narrow query comes back empty this falls back to a broad name-only query
+/// across every same-named place worldwide, disambiguated by picking
+/// whichever candidate's polygon actually contains the configured (lat,
+/// lng) and, among those, the smallest one (the most specific admin level —
+/// an arrondissement over the city that contains it, rather than whichever
+/// has the closest average node position, which favors large polygons).
+///
+/// Returns `Ok(None)` (not an error) when no relation is found, so callers
+/// can fall back to the unclipped bbox fetch.
+async fn fetch_city_boundary(
     client: &reqwest::Client,
     city: &CityConfig,
-    geocoder: &mut Geocoder<'_>,
-) -> Result<Vec<StreetData>> {
-    let CityConfig { lat, lng, bbox, .. } = *city;
-    let query = format!(
-        "[out:json][timeout:60];\n\
-        (\n\
-          way[\"highway\"~\"^(residential|secondary|tertiary|primary|living_street|service|footway|path|track|pedestrian|cycleway|unclassified)$\"]\n\
-            ({},{},{},{});\n\
-        );\n\
-        out body geom;",
-        lat - bbox,
-        lng - bbox,
-        lat + bbox,
-        lng + bbox
-    );
+) -> Result<Option<Boundary>> {
+    let escaped_name = city.name.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped_postal = city.postal_code.replace('\\', "\\\\").replace('"', "\\\"");
 
-    // overpass-api.de load-balances across several backends and occasionally
-    // routes a request to one returning a transient error (e.g. HTTP 406);
-    // retrying a handful of times with a short backoff works around this.
+    let narrow_query = format!(
+        "[out:json][timeout:60];\n\
+        relation[\"boundary\"=\"administrative\"][\"name\"~\"{escaped_name}\"]\
+        [\"postal_code\"~\"(^|;){escaped_postal}(;|$)\"];\n\
+        out geom;"
+    );
+    let relations = run_overpass_query(client, &narrow_query).await?;
+    if let Some(boundary) = pick_boundary(&relations, city) {
+        return Ok(Some(boundary));
+    }
+
+    let broad_query = format!(
+        "[out:json][timeout:90];\n\
+        relation[\"boundary\"=\"administrative\"][\"admin_level\"~\"^(8|9)$\"][\"name\"~\"{escaped_name}\"];\n\
+        out geom;"
+    );
+    let relations = run_overpass_query(client, &broad_query).await?;
+    Ok(pick_boundary(&relations, city))
+}
+
+/// POST a query to the Overpass API and parse the response, retrying on
+/// transient failures. overpass-api.de load-balances across several
+/// backends that occasionally return a transient error (HTTP 406 without a
+/// User-Agent, 429 rate-limited, 504 under load); retrying a handful of
+/// times with a growing backoff works around this.
+async fn run_overpass_query(client: &reqwest::Client, query: &str) -> Result<OverpassResponse> {
     const MAX_ATTEMPTS: u32 = 4;
     let mut last_error = None;
-    let mut data: Option<OverpassResponse> = None;
 
     for attempt in 1..=MAX_ATTEMPTS {
         let result = async {
             let response = client
                 .post(OVERPASS_API_URL)
-                .form(&[("data", query.as_str())])
+                .form(&[("data", query)])
                 .send()
                 .await?
                 .error_for_status()?;
@@ -364,10 +482,7 @@ async fn fetch_streets_from_overpass(
         .await;
 
         match result {
-            Ok(response) => {
-                data = Some(response);
-                break;
-            }
+            Ok(response) => return Ok(response),
             Err(err) => {
                 println!("  Overpass attempt {attempt}/{MAX_ATTEMPTS} failed: {err}");
                 last_error = Some(err);
@@ -379,53 +494,449 @@ async fn fetch_streets_from_overpass(
         }
     }
 
-    let data = match data {
-        Some(data) => data,
-        None => return Err(last_error.expect("at least one attempt was made").into()),
-    };
+    Err(last_error.expect("at least one attempt was made").into())
+}
 
-    let mut streets = Vec::new();
-    for element in data.elements {
-        if element.kind == "way" {
-            if let Some(geometry) = element.geometry {
-                let nodes: Vec<(f64, f64)> =
-                    geometry.iter().map(|node| (node.lat, node.lon)).collect();
-                if nodes.len() >= 2 {
-                    let length = calculate_distance(&nodes);
-                    let name = match element.tags.and_then(|tags| tags.name) {
-                        Some(name) => name,
-                        // No `name` tag (common for unnamed footways/service
-                        // roads): ask Nominatim for the road name at this
-                        // way's midpoint instead of exposing the raw OSM id.
-                        None => {
-                            let (mid_lat, mid_lng) = nodes[nodes.len() / 2];
-                            geocoder
-                                .reverse(mid_lat, mid_lng)
-                                .await
-                                .and_then(|response| {
-                                    response.address.road_name().map(str::to_string)
-                                })
-                                .unwrap_or_else(|| format!("Street {}", element.id))
-                        }
-                    };
-                    // Keep node ids only when they align 1:1 with the geometry.
-                    let node_ids = element
-                        .nodes
-                        .filter(|ids| ids.len() == nodes.len())
-                        .unwrap_or_default();
-                    streets.push(StreetData {
-                        id: format!("way-{}", element.id),
-                        name,
-                        nodes,
-                        length,
-                        node_ids,
-                    });
+/// Among `data`'s relations, pick the boundary polygon to use: prefer
+/// whichever candidate's own polygon contains the configured (lat, lng),
+/// and among those the one with the smallest bounding-box area (the most
+/// specific admin level). Falls back to the smallest candidate overall if
+/// none contain the point (e.g. floating-point edge case near the border).
+fn pick_boundary(data: &OverpassResponse, city: &CityConfig) -> Option<Boundary> {
+    let mut scored: Vec<(bool, f64, Boundary)> = data
+        .elements
+        .iter()
+        .filter(|el| el.kind == "relation")
+        .filter_map(|relation| {
+            let outer_ways: Vec<Vec<(f64, f64)>> = relation
+                .members
+                .as_ref()?
+                .iter()
+                .filter(|m| m.kind == "way" && (m.role == "outer" || m.role.is_empty()))
+                .filter_map(|m| m.geometry.as_ref())
+                .map(|geometry| geometry.iter().map(|n| (n.lat, n.lon)).collect())
+                .filter(|nodes: &Vec<(f64, f64)>| nodes.len() >= 2)
+                .collect();
+            let rings = assemble_rings(outer_ways);
+            if rings.is_empty() {
+                return None;
+            }
+            let boundary = Boundary { rings };
+            let contains = point_in_boundary((city.lat, city.lng), &boundary);
+            let (min_lat, min_lng, max_lat, max_lng) = boundary_bbox(&boundary, 0.0);
+            let area = (max_lat - min_lat) * (max_lng - min_lng);
+            Some((contains, area, boundary))
+        })
+        .collect();
+
+    if scored.iter().any(|(contains, ..)| *contains) {
+        scored.retain(|(contains, ..)| *contains);
+    }
+    scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal));
+    scored.into_iter().map(|(_, _, boundary)| boundary).next()
+}
+
+/// Stitch member ways (in arbitrary order/direction) into closed ring(s) by
+/// chaining shared endpoints. A relation's `outer` members aren't guaranteed
+/// to be returned in ring order, so this greedily extends a ring from either
+/// end until it closes or nothing else connects.
+fn assemble_rings(mut remaining: Vec<Vec<(f64, f64)>>) -> Vec<Vec<(f64, f64)>> {
+    const EPS: f64 = 1e-7;
+    let pts_eq = |a: (f64, f64), b: (f64, f64)| (a.0 - b.0).abs() < EPS && (a.1 - b.1).abs() < EPS;
+
+    let mut rings = Vec::new();
+    while !remaining.is_empty() {
+        let mut ring = remaining.remove(0);
+        loop {
+            if ring.len() > 2 && pts_eq(*ring.first().unwrap(), *ring.last().unwrap()) {
+                break;
+            }
+            let (head, tail) = (*ring.first().unwrap(), *ring.last().unwrap());
+            let found = remaining.iter().enumerate().find_map(|(i, w)| {
+                let (w_first, w_last) = (*w.first().unwrap(), *w.last().unwrap());
+                if pts_eq(w_first, tail) {
+                    Some((i, false, true))
+                } else if pts_eq(w_last, tail) {
+                    Some((i, true, true))
+                } else if pts_eq(w_last, head) {
+                    Some((i, false, false))
+                } else if pts_eq(w_first, head) {
+                    Some((i, true, false))
+                } else {
+                    None
                 }
+            });
+            match found {
+                Some((i, reverse, append_to_tail)) => {
+                    let mut way = remaining.remove(i);
+                    if reverse {
+                        way.reverse();
+                    }
+                    if append_to_tail {
+                        ring.extend(way.into_iter().skip(1));
+                    } else {
+                        way.pop();
+                        way.extend(ring);
+                        ring = way;
+                    }
+                }
+                None => break, // dangling: nothing left connects to either end
             }
         }
+        if ring.len() >= 3 {
+            if !pts_eq(*ring.first().unwrap(), *ring.last().unwrap()) {
+                let first = ring[0];
+                ring.push(first);
+            }
+            rings.push(ring);
+        }
+    }
+    rings
+}
+
+/// Point-in-polygon test (ray casting) against a single closed ring.
+fn point_in_ring(point: (f64, f64), ring: &[(f64, f64)]) -> bool {
+    let mut inside = false;
+    let mut j = ring.len() - 1;
+    for i in 0..ring.len() {
+        let (xi, yi) = ring[i];
+        let (xj, yj) = ring[j];
+        if (yi > point.1) != (yj > point.1) {
+            let x_intersect = xi + (point.1 - yi) / (yj - yi) * (xj - xi);
+            if point.0 < x_intersect {
+                inside = !inside;
+            }
+        }
+        j = i;
+    }
+    inside
+}
+
+fn point_in_boundary(point: (f64, f64), boundary: &Boundary) -> bool {
+    boundary.rings.iter().any(|ring| point_in_ring(point, ring))
+}
+
+/// Bounding box `(min_lat, min_lng, max_lat, max_lng)` of every point in
+/// `boundary`, padded by `margin_deg` so the Overpass fetch (which is
+/// clipped to the boundary afterwards anyway) also picks up streets whose
+/// geometry starts just outside the commune but crosses into it.
+fn boundary_bbox(boundary: &Boundary, margin_deg: f64) -> (f64, f64, f64, f64) {
+    let mut min_lat = f64::INFINITY;
+    let mut min_lng = f64::INFINITY;
+    let mut max_lat = f64::NEG_INFINITY;
+    let mut max_lng = f64::NEG_INFINITY;
+    for ring in &boundary.rings {
+        for &(lat, lng) in ring {
+            min_lat = min_lat.min(lat);
+            min_lng = min_lng.min(lng);
+            max_lat = max_lat.max(lat);
+            max_lng = max_lng.max(lng);
+        }
+    }
+    (
+        min_lat - margin_deg,
+        min_lng - margin_deg,
+        max_lat + margin_deg,
+        max_lng + margin_deg,
+    )
+}
+
+/// Intersection of segment `p0`-`p1` with segment `a`-`b`, if any, as
+/// `(t, point)` where `t` is the fractional position along `p0`-`p1`.
+fn segment_intersection(
+    p0: (f64, f64),
+    p1: (f64, f64),
+    a: (f64, f64),
+    b: (f64, f64),
+) -> Option<(f64, (f64, f64))> {
+    let (x1, y1) = p0;
+    let (x2, y2) = p1;
+    let (x3, y3) = a;
+    let (x4, y4) = b;
+    let d = (x2 - x1) * (y4 - y3) - (y2 - y1) * (x4 - x3);
+    if d.abs() < 1e-15 {
+        return None;
+    }
+    let t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d;
+    let s = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / d;
+    if (0.0..=1.0).contains(&t) && (0.0..=1.0).contains(&s) {
+        Some((t, (x1 + t * (x2 - x1), y1 + t * (y2 - y1))))
+    } else {
+        None
+    }
+}
+
+/// The first point (closest to `p0`) where segment `p0`-`p1` crosses any
+/// edge of `boundary`.
+fn first_boundary_crossing(
+    p0: (f64, f64),
+    p1: (f64, f64),
+    boundary: &Boundary,
+) -> Option<(f64, f64)> {
+    boundary
+        .rings
+        .iter()
+        .flat_map(|ring| ring.windows(2))
+        .filter_map(|edge| segment_intersection(p0, p1, edge[0], edge[1]))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, point)| point)
+}
+
+/// Clip a polyline to the portion(s) lying inside `boundary`, splitting it
+/// into one sub-polyline per inside run and inserting the exact crossing
+/// point at every entry/exit. This is what makes a street that runs into a
+/// neighboring commune stop right at the border instead of continuing past
+/// it (the cut end then naturally becomes a dead end the route solver
+/// already knows how to turn around at).
+fn clip_polyline(nodes: &[(f64, f64)], boundary: &Boundary) -> Vec<Vec<(f64, f64)>> {
+    let mut result = Vec::new();
+    let mut current: Vec<(f64, f64)> = Vec::new();
+    let mut prev_inside = point_in_boundary(nodes[0], boundary);
+    if prev_inside {
+        current.push(nodes[0]);
     }
 
+    for window in nodes.windows(2) {
+        let (p0, p1) = (window[0], window[1]);
+        let inside1 = point_in_boundary(p1, boundary);
+
+        if prev_inside == inside1 {
+            if inside1 {
+                current.push(p1);
+            }
+        } else if let Some(cross) = first_boundary_crossing(p0, p1, boundary) {
+            if prev_inside {
+                // Exiting: close the current run at the border.
+                current.push(cross);
+                if current.len() >= 2 {
+                    result.push(std::mem::take(&mut current));
+                } else {
+                    current.clear();
+                }
+            } else {
+                // Entering: start a new run at the border.
+                current = vec![cross, p1];
+            }
+        } else if inside1 {
+            // Numerically failed to locate the crossing (point exactly on
+            // the boundary); fall back to starting the run at `p1`.
+            current = vec![p1];
+        }
+
+        prev_inside = inside1;
+    }
+
+    if current.len() >= 2 {
+        result.push(current);
+    }
+    result
+}
+
+/// Fetch streets data from Overpass API for a bounding box around a point.
+async fn fetch_streets_from_overpass(
+    client: &reqwest::Client,
+    city: &CityConfig,
+    geocoder: &mut Geocoder<'_>,
+    boundary: Option<&Boundary>,
+) -> Result<Vec<StreetData>> {
+    let CityConfig { lat, lng, bbox, .. } = *city;
+    // Prefer the actual commune boundary's bounding box (padded) over the
+    // configured `bbox` square: communes are rarely square, and a fixed
+    // radius around the center point can clip off real streets near an
+    // elongated edge (the boundary itself still gets applied afterwards via
+    // `clip_raw_way`, so padding generously here is harmless).
+    const BOUNDARY_MARGIN_DEG: f64 = 0.003;
+    let (min_lat, min_lng, max_lat, max_lng) = match boundary {
+        Some(boundary) => boundary_bbox(boundary, BOUNDARY_MARGIN_DEG),
+        None => (lat - bbox, lng - bbox, lat + bbox, lng + bbox),
+    };
+    let query = format!(
+        "[out:json][timeout:60];\n\
+        (\n\
+          way[\"highway\"~\"^(residential|secondary|tertiary|primary|living_street|pedestrian|unclassified)$\"]\n\
+            ({min_lat},{min_lng},{max_lat},{max_lng});\n\
+        );\n\
+        out body geom;"
+    );
+
+    let data = run_overpass_query(client, &query).await?;
+
+    // First pass: parse every way, keeping its OSM `name` tag (if any) as
+    // `None` for the unnamed ones we'll need to resolve below.
+    let mut raw: Vec<RawWay> = Vec::new();
+    for element in data.elements {
+        if element.kind != "way" {
+            continue;
+        }
+        let Some(geometry) = element.geometry else {
+            continue;
+        };
+        let nodes: Vec<(f64, f64)> = geometry.iter().map(|node| (node.lat, node.lon)).collect();
+        if nodes.len() < 2 {
+            continue;
+        }
+        let length = calculate_distance(&nodes);
+        let name = element
+            .tags
+            .and_then(|tags| tags.name)
+            .filter(|name| !name.trim().is_empty());
+        // Keep node ids only when they align 1:1 with the geometry.
+        let node_ids = element
+            .nodes
+            .filter(|ids| ids.len() == nodes.len())
+            .unwrap_or_default();
+        raw.push(RawWay {
+            id: element.id,
+            nodes,
+            length,
+            node_ids,
+            name,
+            piece: None,
+        });
+    }
+
+    // Clip every way to the commune's administrative boundary, dropping the
+    // portions (and whole ways) that fall outside it. A way that crosses the
+    // border is cut into one or more in-boundary pieces, each ending exactly
+    // at the border; the route solver already turns around at dead ends, so
+    // this alone makes the route stop at the border instead of wandering
+    // into the neighboring commune.
+    if let Some(boundary) = boundary {
+        raw = raw
+            .into_iter()
+            .flat_map(|way| clip_raw_way(way, boundary))
+            .collect();
+    }
+
+    // Second pass: resolve a name for the unnamed ways. Most unnamed ways
+    // are short spurs/fragments of an already-named street (e.g. a
+    // driveway cut or a split way at an intersection), so first try to
+    // snap to the nearest *already-named* way within `SNAP_DISTANCE_M`
+    // (pure local geometry, no network call). Only ways with nothing
+    // nearby fall back to a throttled, disk-cached Nominatim lookup.
+    let named_indices: Vec<usize> = (0..raw.len()).filter(|&i| raw[i].name.is_some()).collect();
+    let mut names: Vec<Option<String>> = raw.iter().map(|way| way.name.clone()).collect();
+
+    for i in 0..raw.len() {
+        if names[i].is_some() {
+            continue;
+        }
+        let (mid_lat, mid_lng) = raw[i].nodes[raw[i].nodes.len() / 2];
+        let snapped = named_indices
+            .iter()
+            .filter_map(|&j| {
+                let distance = point_to_polyline_distance_m((mid_lat, mid_lng), &raw[j].nodes, lat);
+                (distance <= SNAP_DISTANCE_M).then(|| (distance, raw[j].name.as_deref().unwrap()))
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0))
+            .map(|(_, name)| name.to_string());
+
+        names[i] = Some(match snapped {
+            Some(name) => name,
+            // Truly isolated unnamed way (no nearby named street): ask
+            // Nominatim for the road name at this way's midpoint instead of
+            // exposing the raw OSM id.
+            None => geocoder
+                .road_name(mid_lat, mid_lng)
+                .await
+                .unwrap_or_else(|| format!("Street {}", raw[i].id)),
+        });
+    }
+
+    let streets = raw
+        .into_iter()
+        .zip(names)
+        .map(|(way, name)| StreetData {
+            id: match way.piece {
+                Some(piece) => format!("way-{}-{piece}", way.id),
+                None => format!("way-{}", way.id),
+            },
+            name: name.expect("every way was assigned a name above"),
+            nodes: way.nodes,
+            length: way.length,
+            node_ids: way.node_ids,
+        })
+        .collect();
+
     Ok(streets)
+}
+
+/// A parsed OSM way, before name resolution (see [`fetch_streets_from_overpass`]).
+struct RawWay {
+    id: i64,
+    nodes: Vec<(f64, f64)>,
+    length: f64,
+    node_ids: Vec<i64>,
+    name: Option<String>,
+    /// Set when this way was split by [`clip_raw_way`] into multiple
+    /// in-boundary pieces, to keep their generated ids unique. `node_ids` is
+    /// dropped for split pieces since the cut point isn't an OSM node, so
+    /// alignment with `nodes` can't be preserved.
+    piece: Option<usize>,
+}
+
+/// Clip a single raw way to `boundary`, returning the in-boundary piece(s).
+/// A way entirely inside the boundary passes through unchanged (including
+/// its `node_ids`, so intersection-splitting in [`split_into_segments`]
+/// keeps working normally for the common case).
+fn clip_raw_way(way: RawWay, boundary: &Boundary) -> Vec<RawWay> {
+    let pieces = clip_polyline(&way.nodes, boundary);
+
+    if pieces.len() == 1 && pieces[0].len() == way.nodes.len() {
+        return vec![way];
+    }
+
+    pieces
+        .into_iter()
+        .enumerate()
+        .map(|(i, nodes)| RawWay {
+            id: way.id,
+            length: calculate_distance(&nodes),
+            nodes,
+            node_ids: Vec::new(),
+            name: way.name.clone(),
+            piece: Some(i),
+        })
+        .collect()
+}
+
+/// Snap distance (meters) used to reuse a nearby named street's name for an
+/// unnamed way fragment, instead of paying for a reverse-geocode call.
+const SNAP_DISTANCE_M: f64 = 20.0;
+
+/// Approximate equirectangular projection from lat/lng degrees to meters,
+/// accurate enough for distances within a single city's bounding box.
+fn project_local_m(lat: f64, lng: f64, ref_lat: f64) -> (f64, f64) {
+    const METERS_PER_DEGREE_LAT: f64 = 111_320.0;
+    let x = lng * ref_lat.to_radians().cos() * METERS_PER_DEGREE_LAT;
+    let y = lat * METERS_PER_DEGREE_LAT;
+    (x, y)
+}
+
+fn point_to_segment_distance_m(p: (f64, f64), a: (f64, f64), b: (f64, f64)) -> f64 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let len_sq = dx * dx + dy * dy;
+    let t = if len_sq > 0.0 {
+        (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / len_sq).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let (cx, cy) = (a.0 + t * dx, a.1 + t * dy);
+    ((p.0 - cx).powi(2) + (p.1 - cy).powi(2)).sqrt()
+}
+
+/// Shortest distance in meters from `point` (lat, lng) to any segment of
+/// `polyline` (also lat, lng), via local equirectangular projection.
+fn point_to_polyline_distance_m(point: (f64, f64), polyline: &[(f64, f64)], ref_lat: f64) -> f64 {
+    let p = project_local_m(point.0, point.1, ref_lat);
+    polyline
+        .windows(2)
+        .map(|w| {
+            let a = project_local_m(w[0].0, w[0].1, ref_lat);
+            let b = project_local_m(w[1].0, w[1].1, ref_lat);
+            point_to_segment_distance_m(p, a, b)
+        })
+        .fold(f64::INFINITY, f64::min)
 }
 
 /// Generate a deterministic synthetic street grid for a city.
@@ -1335,12 +1846,48 @@ async fn main() -> Result<()> {
         ))
         .build()?;
     let mut processed: Vec<(&CityConfig, EditionSummary, String)> = Vec::new();
-    let mut geocoder = Geocoder::new(&client);
+    let mut geocoder = Geocoder::new(&client, paths.data_raw.join("geocode-cache.json"));
 
     for city in &cities {
         println!("\nProcessing {} ({})...", city.name, city.postal_code);
 
-        let streets = match fetch_streets_from_overpass(&client, city, &mut geocoder).await {
+        let boundary = match fetch_city_boundary(&client, city).await {
+            Ok(Some(boundary)) => {
+                println!(
+                    "  fetched commune boundary ({} ring(s))",
+                    boundary.rings.len()
+                );
+                Some(boundary)
+            }
+            Ok(None) => {
+                println!(
+                    "  Warning: no commune boundary found for {}; streets won't be clipped at the city border",
+                    city.name
+                );
+                None
+            }
+            Err(error) => {
+                println!(
+                    "  Warning: failed to fetch commune boundary for {} ({error}); streets won't be clipped at the city border",
+                    city.name
+                );
+                None
+            }
+        };
+
+        // Overpass rate-limits bursts of requests from the same client; a
+        // short pause between the boundary query above and the street query
+        // below avoids tripping it.
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+
+        let streets = match fetch_streets_from_overpass(
+            &client,
+            city,
+            &mut geocoder,
+            boundary.as_ref(),
+        )
+        .await
+        {
             Ok(streets) if !streets.is_empty() => {
                 println!("  fetched {} streets from Overpass", streets.len());
                 streets
@@ -1367,6 +1914,10 @@ async fn main() -> Result<()> {
             Ok((edition, dir)) => processed.push((city, edition, dir)),
             Err(error) => eprintln!("Error processing {}: {error}", city.name),
         }
+
+        // Persist after every city so an interrupted build doesn't lose the
+        // (rate-limited) lookups it already paid for.
+        geocoder.save()?;
     }
 
     // Re-build global manifests from the full registry so unaffected cities

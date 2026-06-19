@@ -1,82 +1,92 @@
 {
   "cityId": "FR-33560-Sainte-Eulalie",
-  "editionId": "FR-33560-Sainte-Eulalie-2026-06-18",
-  "date": "2026-06-18",
-  "streetCount": 1063,
-  "totalMeters": 153083,
-  "totalDistance": 153.083,
-  "totalAttempts": 7,
-  "totalCompleted": 3,
+  "editionId": "FR-33560-Sainte-Eulalie-2026-06-19",
+  "date": "2026-06-19",
+  "streetCount": 195,
+  "totalMeters": 45300,
+  "totalDistance": 45.3,
+  "totalAttempts": 8,
+  "totalCompleted": 4,
   "leaderboard": [
-    {
-      "playerId": "player-dana",
-      "playerName": "Dana Müller",
-      "country": "DEU",
-      "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 160.43,
-      "completed": true,
-      "rank": 1,
-      "time": 67625
-    },
     {
       "playerId": "player-elena",
       "playerName": "Elena Rossi",
       "country": "ITA",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 160.28,
+      "distance": 48.04,
+      "completed": true,
+      "rank": 1,
+      "time": 19356
+    },
+    {
+      "playerId": "player-dana",
+      "playerName": "Dana Müller",
+      "country": "DEU",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 46.05,
       "completed": true,
       "rank": 2,
-      "time": 74735
+      "time": 12950
     },
     {
       "playerId": "player-fatima",
       "playerName": "Fatima Garcia",
       "country": "ESP",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 159.15,
+      "distance": 45.95,
       "completed": true,
       "rank": 3,
-      "time": 48112
+      "time": 12917
     },
     {
       "playerId": "player-charlie",
       "playerName": "Charlie Smith",
       "country": "GBR",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 135.29,
-      "completed": false,
+      "distance": 45.26,
+      "completed": true,
       "rank": 4,
-      "time": 63307
+      "time": 18087
     },
     {
-      "playerId": "player-bob",
-      "playerName": "Bob Dupont",
-      "country": "BEL",
+      "playerId": "player-alice",
+      "playerName": "Alice Martin",
+      "country": "FRA",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 116.85,
+      "distance": 36.27,
       "completed": false,
       "rank": 5,
-      "time": 35605
+      "time": 12076
     },
     {
       "playerId": "player-hana",
       "playerName": "Hana Visser",
       "country": "NLD",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 113.71,
+      "distance": 34.3,
       "completed": false,
       "rank": 6,
-      "time": 37809
+      "time": 15958
     },
     {
       "playerId": "player-gus",
       "playerName": "Gus Johnson",
       "country": "USA",
       "cityId": "FR-33560-Sainte-Eulalie",
-      "distance": 93.59,
+      "distance": 33.4,
       "completed": false,
       "rank": 7,
-      "time": 29298
+      "time": 9716
+    },
+    {
+      "playerId": "player-bob",
+      "playerName": "Bob Dupont",
+      "country": "BEL",
+      "cityId": "FR-33560-Sainte-Eulalie",
+      "distance": 28.37,
+      "completed": false,
+      "rank": 8,
+      "time": 9341
     }
   ]
 }

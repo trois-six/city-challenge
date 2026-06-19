@@ -1,14 +1,26 @@
 [
   {
     "id": "FR-33560-Sainte-Eulalie-2026-06-18",
-    "current": true,
+    "current": false,
     "country": "FRA",
     "region": "Nouvelle-Aquitaine",
     "department": "33",
     "postalCode": "33560",
     "name": "Sainte-Eulalie",
     "date": "2026-06-18",
-    "streetCount": 2329,
-    "totalMeters": 278088
+    "streetCount": 1063,
+    "totalMeters": 153083
+  },
+  {
+    "id": "FR-33560-Sainte-Eulalie-2026-06-19",
+    "current": true,
+    "country": "FRA",
+    "region": "Nouvelle-Aquitaine",
+    "department": "33",
+    "postalCode": "33560",
+    "name": "Sainte-Eulalie",
+    "date": "2026-06-19",
+    "streetCount": 195,
+    "totalMeters": 45300
   }
 ]

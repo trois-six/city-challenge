@@ -1,27 +1,27 @@
 [
   {
     "rank": 1,
-    "playerId": "player-fatima",
-    "playerName": "Fatima Garcia",
-    "country": "ESP",
-    "citiesCompleted": 2,
-    "totalDistance": 402.809
-  },
-  {
-    "rank": 2,
-    "playerId": "player-dana",
-    "playerName": "Dana Müller",
-    "country": "DEU",
-    "citiesCompleted": 1,
-    "totalDistance": 278.088
-  },
-  {
-    "rank": 3,
     "playerId": "player-elena",
     "playerName": "Elena Rossi",
     "country": "ITA",
-    "citiesCompleted": 1,
-    "totalDistance": 278.088
+    "citiesCompleted": 2,
+    "totalDistance": 106.721
+  },
+  {
+    "rank": 2,
+    "playerId": "player-bob",
+    "playerName": "Bob Dupont",
+    "country": "BEL",
+    "citiesCompleted": 2,
+    "totalDistance": 92.414
+  },
+  {
+    "rank": 3,
+    "playerId": "player-dana",
+    "playerName": "Dana Müller",
+    "country": "DEU",
+    "citiesCompleted": 2,
+    "totalDistance": 100.586
   },
   {
     "rank": 4,
@@ -29,37 +29,37 @@
     "playerName": "Hana Visser",
     "country": "NLD",
     "citiesCompleted": 1,
-    "totalDistance": 124.721
+    "totalDistance": 55.286
   },
   {
     "rank": 5,
-    "playerId": "player-alice",
-    "playerName": "Alice Martin",
-    "country": "FRA",
+    "playerId": "player-fatima",
+    "playerName": "Fatima Garcia",
+    "country": "ESP",
     "citiesCompleted": 1,
-    "totalDistance": 56.344
+    "totalDistance": 45.3
   },
   {
     "rank": 6,
     "playerId": "player-charlie",
     "playerName": "Charlie Smith",
     "country": "GBR",
-    "citiesCompleted": 0,
-    "totalDistance": 0.0
+    "citiesCompleted": 1,
+    "totalDistance": 45.3
   },
   {
     "rank": 7,
-    "playerId": "player-bob",
-    "playerName": "Bob Dupont",
-    "country": "BEL",
+    "playerId": "player-gus",
+    "playerName": "Gus Johnson",
+    "country": "USA",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   },
   {
     "rank": 8,
-    "playerId": "player-gus",
-    "playerName": "Gus Johnson",
-    "country": "USA",
+    "playerId": "player-alice",
+    "playerName": "Alice Martin",
+    "country": "FRA",
     "citiesCompleted": 0,
     "totalDistance": 0.0
   }

@@ -1,0 +1,82 @@
+{
+  "cityId": "FR-74290-Talloires",
+  "editionId": "FR-74290-Talloires-2026-06-19",
+  "date": "2026-06-19",
+  "streetCount": 303,
+  "totalMeters": 55286,
+  "totalDistance": 55.286,
+  "totalAttempts": 7,
+  "totalCompleted": 3,
+  "leaderboard": [
+    {
+      "playerId": "player-bob",
+      "playerName": "Bob Dupont",
+      "country": "BEL",
+      "cityId": "FR-74290-Talloires",
+      "distance": 57.95,
+      "completed": true,
+      "rank": 1,
+      "time": 27071
+    },
+    {
+      "playerId": "player-dana",
+      "playerName": "Dana Müller",
+      "country": "DEU",
+      "cityId": "FR-74290-Talloires",
+      "distance": 56.72,
+      "completed": true,
+      "rank": 2,
+      "time": 19982
+    },
+    {
+      "playerId": "player-hana",
+      "playerName": "Hana Visser",
+      "country": "NLD",
+      "cityId": "FR-74290-Talloires",
+      "distance": 55.52,
+      "completed": true,
+      "rank": 3,
+      "time": 19748
+    },
+    {
+      "playerId": "player-elena",
+      "playerName": "Elena Rossi",
+      "country": "ITA",
+      "cityId": "FR-74290-Talloires",
+      "distance": 49.65,
+      "completed": false,
+      "rank": 4,
+      "time": 15131
+    },
+    {
+      "playerId": "player-alice",
+      "playerName": "Alice Martin",
+      "country": "FRA",
+      "cityId": "FR-74290-Talloires",
+      "distance": 49.35,
+      "completed": false,
+      "rank": 5,
+      "time": 17823
+    },
+    {
+      "playerId": "player-charlie",
+      "playerName": "Charlie Smith",
+      "country": "GBR",
+      "cityId": "FR-74290-Talloires",
+      "distance": 44.63,
+      "completed": false,
+      "rank": 6,
+      "time": 15025
+    },
+    {
+      "playerId": "player-gus",
+      "playerName": "Gus Johnson",
+      "country": "USA",
+      "cityId": "FR-74290-Talloires",
+      "distance": 43.69,
+      "completed": false,
+      "rank": 7,
+      "time": 15150
+    }
+  ]
+}

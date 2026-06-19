@@ -13,7 +13,7 @@
   },
   {
     "id": "FR-74290-Talloires-2026-06-17",
-    "current": true,
+    "current": false,
     "country": "FRA",
     "region": "Auvergne-Rhône-Alpes",
     "department": "74",
@@ -22,5 +22,17 @@
     "date": "2026-06-17",
     "streetCount": 576,
     "totalMeters": 56344
+  },
+  {
+    "id": "FR-74290-Talloires-2026-06-19",
+    "current": true,
+    "country": "FRA",
+    "region": "Auvergne-Rhône-Alpes",
+    "department": "74",
+    "postalCode": "74290",
+    "name": "Talloires",
+    "date": "2026-06-19",
+    "streetCount": 303,
+    "totalMeters": 55286
   }
 ]

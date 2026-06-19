@@ -6,9 +6,9 @@
     "department": "75",
     "postalCode": "75001",
     "name": "Paris",
-    "date": "2026-06-17",
-    "streetCount": 2236,
-    "totalMeters": 124721,
+    "date": "2026-06-19",
+    "streetCount": 608,
+    "totalMeters": 61421,
     "dir": "FR/75/75001/Paris"
   },
   {
@@ -18,9 +18,9 @@
     "department": "69",
     "postalCode": "69001",
     "name": "Lyon",
-    "date": "2026-06-17",
-    "streetCount": 3413,
-    "totalMeters": 124269,
+    "date": "2026-06-19",
+    "streetCount": 523,
+    "totalMeters": 37128,
     "dir": "FR/69/69001/Lyon"
   },
   {
@@ -30,9 +30,9 @@
     "department": "74",
     "postalCode": "74290",
     "name": "Talloires",
-    "date": "2026-06-17",
-    "streetCount": 576,
-    "totalMeters": 56344,
+    "date": "2026-06-19",
+    "streetCount": 303,
+    "totalMeters": 55286,
     "dir": "FR/74/74290/Talloires"
   },
   {
@@ -42,9 +42,9 @@
     "department": "33",
     "postalCode": "33560",
     "name": "Sainte-Eulalie",
-    "date": "2026-06-18",
-    "streetCount": 2329,
-    "totalMeters": 278088,
+    "date": "2026-06-19",
+    "streetCount": 195,
+    "totalMeters": 45300,
     "dir": "FR/33/33560/Sainte-Eulalie"
   }
 ]

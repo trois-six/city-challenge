@@ -13,7 +13,7 @@
   },
   {
     "id": "FR-75001-Paris-2026-06-17",
-    "current": true,
+    "current": false,
     "country": "FRA",
     "region": "Île-de-France",
     "department": "75",
@@ -22,5 +22,17 @@
     "date": "2026-06-17",
     "streetCount": 2236,
     "totalMeters": 124721
+  },
+  {
+    "id": "FR-75001-Paris-2026-06-19",
+    "current": true,
+    "country": "FRA",
+    "region": "Île-de-France",
+    "department": "75",
+    "postalCode": "75001",
+    "name": "Paris",
+    "date": "2026-06-19",
+    "streetCount": 608,
+    "totalMeters": 61421
   }
 ]

@@ -1,13 +1,18 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PathData } from '@/types'
+import type { TileLayerKind } from './TileMapView'
 import styles from './ConquerMap.module.css'
+
+const TileMapView = lazy(() => import('./TileMapView'))
 
 interface ConquerMapProps {
   pathData: PathData
   highlightGeometry?: [number, number][]
   focusCoordinate?: [number, number]
 }
+
+type ViewMode = 'arcade' | TileLayerKind
 
 interface Bounds {
   minLat: number
@@ -21,6 +26,7 @@ const TRAIL_STEPS = 3
 
 export default function ConquerMap({ pathData, highlightGeometry, focusCoordinate }: ConquerMapProps) {
   const { t } = useTranslation()
+  const [mode, setMode] = useState<ViewMode>('arcade')
   const screenRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pctRef = useRef<HTMLSpanElement>(null)
@@ -257,20 +263,46 @@ export default function ConquerMap({ pathData, highlightGeometry, focusCoordinat
   }, [pathData])
 
   return (
-    <div ref={screenRef} className={styles.screen}>
-      <canvas ref={canvasRef} className={styles.canvas} />
-      <div className={styles.crt} />
-      <div className={styles.hud}>{t('map.title')}</div>
-      <span ref={pctRef} className={styles.pct}>0% CLEARED</span>
-      <div className={styles.legend}>
-        <span className={styles.legendItem}>
-          <span className={styles.swatch} style={{ background: '#FFB23D' }} />
-          {t('map.covered')}
-        </span>
-        <span className={styles.legendItem}>
-          <span className={styles.swatch} style={{ background: 'rgba(255,74,60,0.6)' }} />
-          {t('map.uncovered')}
-        </span>
+    <div className={styles.wrapper}>
+      <div className={styles.toggleBar}>
+        {(['arcade', 'street', 'satellite'] as ViewMode[]).map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={`${styles.toggleBtn} ${mode === m ? styles.toggleBtnActive : ''}`}
+            onClick={() => setMode(m)}
+          >
+            {t(`map.mode${m.charAt(0).toUpperCase()}${m.slice(1)}`)}
+          </button>
+        ))}
+      </div>
+      <div ref={screenRef} className={styles.screen}>
+        <div className={styles.arcadeLayer} style={{ display: mode === 'arcade' ? 'block' : 'none' }}>
+          <canvas ref={canvasRef} className={styles.canvas} />
+          <div className={styles.crt} />
+          <div className={styles.hud}>{t('map.title')}</div>
+          <span ref={pctRef} className={styles.pct}>0% CLEARED</span>
+          <div className={styles.legend}>
+            <span className={styles.legendItem}>
+              <span className={styles.swatch} style={{ background: '#FFB23D' }} />
+              {t('map.covered')}
+            </span>
+            <span className={styles.legendItem}>
+              <span className={styles.swatch} style={{ background: 'rgba(255,74,60,0.6)' }} />
+              {t('map.uncovered')}
+            </span>
+          </div>
+        </div>
+        {mode !== 'arcade' && (
+          <Suspense fallback={null}>
+            <TileMapView
+              pathData={pathData}
+              highlightGeometry={highlightGeometry}
+              focusCoordinate={focusCoordinate}
+              layer={mode}
+            />
+          </Suspense>
+        )}
       </div>
     </div>
   )

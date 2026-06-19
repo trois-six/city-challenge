@@ -95,6 +95,9 @@ const resources = {
         title: 'CIRCUIT',
         covered: 'Parcouru',
         uncovered: 'Restant',
+        modeArcade: 'Arcade',
+        modeStreet: 'Rues',
+        modeSatellite: 'Satellite',
       },
       route: {
         panelTitle: 'Itinéraire',
@@ -213,6 +216,9 @@ const resources = {
         title: 'CIRCUIT',
         covered: 'Covered',
         uncovered: 'Remaining',
+        modeArcade: 'Arcade',
+        modeStreet: 'Streets',
+        modeSatellite: 'Satellite',
       },
       route: {
         panelTitle: 'Itinerary',
